@@ -8,6 +8,7 @@ import {
   Trash2,
   ArrowUpRight,
   Banknote,
+  Eye,
 } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import { parseTechStack, normalizeUrl } from '../lib/sheets';
@@ -28,7 +29,7 @@ export function formatDate(dateString) {
   });
 }
 
-export default function WebsiteCard({ website, onEdit, onDelete }) {
+export default function WebsiteCard({ website, onEdit, onDelete, onPreview }) {
   const techItems = parseTechStack(website.tech_stack);
   const liveUrl = normalizeUrl(website.website_url);
   const repoUrl = normalizeUrl(website.repository_url);
@@ -37,13 +38,13 @@ export default function WebsiteCard({ website, onEdit, onDelete }) {
   const languages = Array.isArray(website.languages) ? website.languages : [];
 
   return (
-    <div className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between">
+    <div className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-800/80 transition-all duration-200 flex flex-col justify-between animate-slide-up">
       <div>
         {/* Card Header: Name & Status */}
         <div className="flex items-start justify-between gap-3">
           <Link
             to={`/websites/${website.id}`}
-            className="text-base font-semibold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors line-clamp-1"
+            className="text-base font-semibold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1"
           >
             {website.name}
           </Link>
@@ -121,6 +122,7 @@ export default function WebsiteCard({ website, onEdit, onDelete }) {
                     width: `${Math.max(lang.percentage, 1.5)}%`,
                     backgroundColor: getLanguageColor(lang.name),
                   }}
+                  className="transition-all duration-500"
                   title={`${lang.name}: ${lang.percentage}%`}
                 />
               ))}
@@ -170,6 +172,17 @@ export default function WebsiteCard({ website, onEdit, onDelete }) {
         </div>
 
         <div className="flex items-center gap-1">
+          {onPreview && (
+            <button
+              type="button"
+              onClick={() => onPreview(website)}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/40 transition-colors cursor-pointer"
+              title="Quick Preview"
+              aria-label={`Quick Preview ${website.name}`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          )}
           {onEdit && (
             <button
               type="button"

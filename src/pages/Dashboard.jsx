@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Globe,
@@ -17,6 +17,11 @@ import {
   AlertCircle,
   RefreshCw,
   Banknote,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  GitBranch,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -28,6 +33,7 @@ import {
   filterWebsites,
   WEBSITE_STATUSES,
   normalizeUrl,
+  parseTechStack,
 } from '../lib/sheets';
 import {
   formatCurrency,
@@ -35,7 +41,10 @@ import {
   getLanguageColor,
 } from '../lib/githubAndAi';
 import WebsiteCard, { formatDate } from '../components/WebsiteCard';
-import WebsiteForm, { DeleteConfirmModal } from '../components/WebsiteForm';
+import WebsiteForm, {
+  DeleteConfirmModal,
+  ProjectPreviewModal,
+} from '../components/WebsiteForm';
 import StatusBadge from '../components/StatusBadge';
 
 export default function Dashboard() {
@@ -44,6 +53,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Hero Spotlight Index for Deployed / Live Websites
+  const [spotlightIndex, setSpotlightIndex] = useState(0);
+
   // Quick Actions: Search, Filter, Layout
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -51,7 +63,7 @@ export default function Dashboard() {
     return localStorage.getItem('mwt_default_view') || 'grid';
   });
 
-  // Modals: Add / Edit / Delete
+  // Modals: Add / Edit / Delete / Quick Preview
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingWebsite, setEditingWebsite] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -59,6 +71,8 @@ export default function Dashboard() {
   const [deletingWebsite, setDeletingWebsite] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  const [previewWebsite, setPreviewWebsite] = useState(null);
 
   const currency = getPreferredCurrency();
 
@@ -77,6 +91,19 @@ export default function Dashboard() {
   useEffect(() => {
     loadWebsites();
   }, [loadWebsites]);
+
+  // All websites that are Deployed / Live
+  const liveWebsites = useMemo(() => {
+    return websites.filter((w) => w.status === 'Deployed / Live');
+  }, [websites]);
+
+  useEffect(() => {
+    if (spotlightIndex >= liveWebsites.length) {
+      setSpotlightIndex(0);
+    }
+  }, [liveWebsites.length, spotlightIndex]);
+
+  const activeSpotlight = liveWebsites[spotlightIndex] || null;
 
   const stats = computeSummaryStats(websites);
   const filteredWebsites = filterWebsites(websites, searchQuery, statusFilter);
@@ -168,7 +195,10 @@ export default function Dashboard() {
     },
     {
       label: `Portfolio Value (${currency})`,
-      value: stats.totalValue > 0 ? formatCurrency(stats.totalValue, currency) : `${currency === 'USD' ? '$0' : '₱0'}`,
+      value:
+        stats.totalValue > 0
+          ? formatCurrency(stats.totalValue, currency)
+          : `${currency === 'USD' ? '$0' : '₱0'}`,
       icon: Banknote,
       color: 'text-emerald-600 dark:text-emerald-400',
       bg: 'bg-emerald-50 dark:bg-emerald-950/50',
@@ -177,7 +207,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -185,7 +215,7 @@ export default function Dashboard() {
             Dashboard
           </h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Centralized overview of your personal website projects, valuations, and deployment status.
+            Centralized overview of your personal website projects, valuations, and live deployments.
           </p>
         </div>
 
@@ -194,7 +224,7 @@ export default function Dashboard() {
             type="button"
             onClick={loadWebsites}
             disabled={loading}
-            className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
             title="Refresh projects"
             aria-label="Refresh projects"
           >
@@ -204,13 +234,298 @@ export default function Dashboard() {
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-sm hover:shadow transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Website</span>
           </button>
         </div>
       </div>
+
+      {/* HERO SECTION: Live & Deployed Websites Showcase */}
+      {!loading && (
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-500/20 shadow-lg animate-slide-up">
+          {/* Subtle decorative glow */}
+          <div
+            className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-indigo-500/15 blur-3xl"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl"
+            aria-hidden="true"
+          />
+
+          <div className="relative p-6 sm:p-8">
+            {/* Hero Top Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-400/30">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span>LIVE PRODUCTION SHOWCASE</span>
+                </span>
+                <span className="text-xs text-slate-300">
+                  {liveWebsites.length}{' '}
+                  {liveWebsites.length === 1 ? 'Website Live' : 'Websites Live'}
+                </span>
+              </div>
+
+              {liveWebsites.length > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSpotlightIndex((prev) =>
+                        prev === 0 ? liveWebsites.length - 1 : prev - 1
+                      )
+                    }
+                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                    aria-label="Previous live website"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs font-medium text-slate-300 px-2">
+                    {spotlightIndex + 1} / {liveWebsites.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSpotlightIndex((prev) =>
+                        prev === liveWebsites.length - 1 ? 0 : prev + 1
+                      )
+                    }
+                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                    aria-label="Next live website"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {activeSpotlight ? (
+              <div className="mt-6 space-y-6">
+                {/* Spotlight Main Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                  <div className="lg:col-span-2 space-y-3.5">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                        {activeSpotlight.name}
+                      </h2>
+                      {Number(activeSpotlight.price) > 0 && (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                          <Banknote className="w-3.5 h-3.5" />
+                          {formatCurrency(activeSpotlight.price, currency)}
+                        </span>
+                      )}
+                      {activeSpotlight.valuation?.detectedCategory && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-500/25 text-indigo-200 border border-indigo-400/30">
+                          <Sparkles className="w-3 h-3" />
+                          {activeSpotlight.valuation.detectedCategory}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-sm sm:text-base text-slate-200/90 leading-relaxed max-w-2xl">
+                      {activeSpotlight.description || 'Deployed live web application.'}
+                    </p>
+
+                    {/* Spotlight Tech Stack */}
+                    {parseTechStack(activeSpotlight.tech_stack).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {parseTechStack(activeSpotlight.tech_stack).map((tech) => (
+                          <span
+                            key={tech}
+                            className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-white/10 text-slate-200 border border-white/10"
+                          >
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Spotlight Action Buttons */}
+                    <div className="pt-2 flex flex-wrap items-center gap-3">
+                      {normalizeUrl(activeSpotlight.website_url) ? (
+                        <a
+                          href={normalizeUrl(activeSpotlight.website_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-sm transition-all"
+                        >
+                          <Globe className="w-4 h-4" />
+                          <span>Visit Live Site</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      ) : null}
+
+                      <button
+                        type="button"
+                        onClick={() => setPreviewWebsite(activeSpotlight)}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>Quick Inspector</span>
+                      </button>
+
+                      {normalizeUrl(activeSpotlight.repository_url) && (
+                        <a
+                          href={normalizeUrl(activeSpotlight.repository_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-medium bg-white/5 hover:bg-white/15 text-slate-200 border border-white/10 transition-all"
+                        >
+                          <GitBranch className="w-3.5 h-3.5" />
+                          <span>Repo</span>
+                        </a>
+                      )}
+
+                      <Link
+                        to={`/websites/${activeSpotlight.id}`}
+                        className="inline-flex items-center gap-1 px-3 py-2.5 rounded-xl text-xs font-medium text-indigo-300 hover:text-white transition-colors"
+                      >
+                        <span>Full Details</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Live URL Card & Languages Breakdown */}
+                  <div className="bg-white/5 backdrop-blur-xs rounded-xl border border-white/10 p-4 space-y-4">
+                    <div>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                        Production Endpoint
+                      </span>
+                      {normalizeUrl(activeSpotlight.website_url) ? (
+                        <a
+                          href={normalizeUrl(activeSpotlight.website_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 flex items-center justify-between gap-2 text-xs font-medium text-emerald-300 hover:underline truncate"
+                        >
+                          <span className="truncate">
+                            {activeSpotlight.website_url}
+                          </span>
+                          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                        </a>
+                      ) : (
+                        <p className="mt-1 text-xs text-slate-400">
+                          No production URL attached
+                        </p>
+                      )}
+                    </div>
+
+                    {Array.isArray(activeSpotlight.languages) &&
+                      activeSpotlight.languages.length > 0 && (
+                        <div className="space-y-2 pt-2 border-t border-white/10">
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">
+                            Codebase Languages
+                          </span>
+                          <div className="h-2 w-full rounded-full overflow-hidden flex bg-white/10">
+                            {activeSpotlight.languages.map((lang) => (
+                              <div
+                                key={lang.name}
+                                style={{
+                                  width: `${Math.max(lang.percentage, 1.5)}%`,
+                                  backgroundColor: getLanguageColor(lang.name),
+                                }}
+                                title={`${lang.name}: ${lang.percentage}%`}
+                              />
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-300">
+                            {activeSpotlight.languages.slice(0, 4).map((lang) => (
+                              <span
+                                key={lang.name}
+                                className="inline-flex items-center gap-1"
+                              >
+                                <span
+                                  className="w-2 h-2 rounded-full"
+                                  style={{
+                                    backgroundColor: getLanguageColor(lang.name),
+                                  }}
+                                />
+                                <span>{lang.name}</span>
+                                <span className="text-slate-400">
+                                  {lang.percentage}%
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                  </div>
+                </div>
+
+                {/* Strip of All Deployed / Live Websites */}
+                {liveWebsites.length > 1 && (
+                  <div className="pt-4 border-t border-white/10">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
+                      All Deployed / Live Websites ({liveWebsites.length})
+                    </p>
+                    <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
+                      {liveWebsites.map((site, idx) => {
+                        const isCurrent = idx === spotlightIndex;
+                        return (
+                          <button
+                            key={site.id}
+                            type="button"
+                            onClick={() => setSpotlightIndex(idx)}
+                            className={`group flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-left text-xs transition-all shrink-0 cursor-pointer border ${
+                              isCurrent
+                                ? 'bg-white text-slate-900 border-white font-semibold shadow-sm'
+                                : 'bg-white/5 hover:bg-white/10 text-slate-200 border-white/10'
+                            }`}
+                          >
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                isCurrent ? 'bg-emerald-500' : 'bg-emerald-400/70'
+                              }`}
+                            />
+                            <span className="truncate max-w-[160px]">{site.name}</span>
+                            {Number(site.price) > 0 && (
+                              <span
+                                className={`text-[11px] px-1.5 py-0.5 rounded ${
+                                  isCurrent
+                                    ? 'bg-slate-100 text-emerald-700'
+                                    : 'bg-white/10 text-emerald-300'
+                                }`}
+                              >
+                                {formatCurrency(site.price, currency)}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">
+                    No Websites Marked as &ldquo;Deployed / Live&rdquo; Yet
+                  </h2>
+                  <p className="text-xs text-slate-300 mt-1 max-w-xl">
+                    Once you set a project&apos;s status to{' '}
+                    <span className="text-emerald-300 font-medium">Deployed / Live</span>, it
+                    will automatically appear here in your live production showcase for 1-click
+                    access.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenAdd}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Register Live Website</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -226,7 +541,7 @@ export default function Dashboard() {
                   prev === card.filterKey ? 'ALL' : card.filterKey
                 )
               }
-              className={`text-left bg-white dark:bg-slate-900 rounded-xl border p-5 shadow-xs transition-all cursor-pointer ${
+              className={`text-left bg-white dark:bg-slate-900 rounded-2xl border p-5 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${
                 isSelected
                   ? 'border-indigo-500 ring-1 ring-indigo-500'
                   : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -236,7 +551,7 @@ export default function Dashboard() {
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {card.label}
                 </span>
-                <div className={`w-9 h-9 rounded-lg ${card.bg} flex items-center justify-center`}>
+                <div className={`w-9 h-9 rounded-xl ${card.bg} flex items-center justify-center`}>
                   <Icon className={`w-4 h-4 ${card.color}`} />
                 </div>
               </div>
@@ -249,7 +564,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Actions Bar: Search, Status Filter, View Toggle */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Search Input */}
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -259,7 +574,7 @@ export default function Dashboard() {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search websites by name, description, FSD, or tech stack..."
             aria-label="Search websites"
-            className="w-full pl-10 pr-3.5 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full pl-10 pr-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
           />
         </div>
 
@@ -271,7 +586,7 @@ export default function Dashboard() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               aria-label="Filter websites by status"
-              className="w-full sm:w-auto pl-8 pr-8 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full sm:w-auto pl-8 pr-8 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="ALL">All Statuses</option>
               <option value="ACTIVE_DEV">All In Development (Planning / Dev / Testing)</option>
@@ -283,11 +598,11 @@ export default function Dashboard() {
             </select>
           </div>
 
-          <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-50 dark:bg-slate-950">
+          <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-50 dark:bg-slate-950">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                 viewMode === 'grid'
                   ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-2xs'
                   : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
@@ -300,7 +615,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                 viewMode === 'table'
                   ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-2xs'
                   : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
@@ -328,7 +643,7 @@ export default function Dashboard() {
           {[1, 2, 3].map((n) => (
             <div
               key={n}
-              className="h-52 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 animate-pulse flex flex-col justify-between"
+              className="h-52 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 animate-pulse flex flex-col justify-between"
             >
               <div className="space-y-3">
                 <div className="h-5 w-1/2 bg-slate-200 dark:bg-slate-800 rounded" />
@@ -340,7 +655,7 @@ export default function Dashboard() {
           ))}
         </div>
       ) : filteredWebsites.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center animate-slide-up">
           <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center mx-auto mb-4">
             <Globe className="w-6 h-6" />
           </div>
@@ -358,7 +673,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={handleOpenAdd}
-              className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors cursor-pointer"
+              className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Add Your First Website</span>
@@ -370,7 +685,7 @@ export default function Dashboard() {
                 setSearchQuery('');
                 setStatusFilter('ALL');
               }}
-              className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               Reset Filters
             </button>
@@ -382,6 +697,7 @@ export default function Dashboard() {
             <WebsiteCard
               key={website.id}
               website={website}
+              onPreview={setPreviewWebsite}
               onEdit={handleOpenEdit}
               onDelete={(site) => {
                 setDeleteError('');
@@ -391,7 +707,7 @@ export default function Dashboard() {
           ))}
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden animate-slide-up">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -475,6 +791,14 @@ export default function Dashboard() {
                         <div className="inline-flex items-center justify-end gap-1">
                           <button
                             type="button"
+                            onClick={() => setPreviewWebsite(website)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-slate-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/40 cursor-pointer"
+                            title="Quick Preview"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleOpenEdit(website)}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 cursor-pointer"
                             title="Edit"
@@ -509,6 +833,14 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Custom Quick Preview Modal */}
+      <ProjectPreviewModal
+        website={previewWebsite}
+        isOpen={Boolean(previewWebsite)}
+        onClose={() => setPreviewWebsite(null)}
+        onEdit={handleOpenEdit}
+      />
 
       {/* Add / Edit Modal */}
       <WebsiteForm

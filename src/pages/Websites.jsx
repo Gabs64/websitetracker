@@ -17,7 +17,10 @@ import {
   WEBSITE_STATUSES,
 } from '../lib/sheets';
 import WebsiteCard from '../components/WebsiteCard';
-import WebsiteForm, { DeleteConfirmModal } from '../components/WebsiteForm';
+import WebsiteForm, {
+  DeleteConfirmModal,
+  ProjectPreviewModal,
+} from '../components/WebsiteForm';
 
 const QUICK_FILTER_TABS = [
   { id: 'ALL', label: 'All Websites' },
@@ -47,6 +50,8 @@ export default function Websites() {
   const [deletingWebsite, setDeletingWebsite] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  const [previewWebsite, setPreviewWebsite] = useState(null);
 
   const loadWebsites = useCallback(async () => {
     setLoading(true);
@@ -136,7 +141,7 @@ export default function Websites() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -272,6 +277,7 @@ export default function Websites() {
             <WebsiteCard
               key={website.id}
               website={website}
+              onPreview={(site) => setPreviewWebsite(site)}
               onEdit={(site) => {
                 setEditingWebsite(site);
                 setIsFormOpen(true);
@@ -284,6 +290,17 @@ export default function Websites() {
           ))}
         </div>
       )}
+
+      {/* Quick Preview Inspector Modal */}
+      <ProjectPreviewModal
+        website={previewWebsite}
+        isOpen={Boolean(previewWebsite)}
+        onClose={() => setPreviewWebsite(null)}
+        onEdit={(site) => {
+          setEditingWebsite(site);
+          setIsFormOpen(true);
+        }}
+      />
 
       {/* Add / Edit Modal */}
       <WebsiteForm
