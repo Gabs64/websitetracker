@@ -39,7 +39,7 @@ function ProtectedLayout() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col lg:flex-row">
       <Sidebar />
-      <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl w-full mx-auto">
+      <main className="flex-1 min-w-0 px-3.5 sm:px-6 lg:px-8 pt-4 pb-24 sm:py-8 lg:pb-8 max-w-7xl w-full mx-auto">
         <Outlet />
       </main>
     </div>

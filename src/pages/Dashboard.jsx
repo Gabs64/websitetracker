@@ -251,24 +251,24 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-5 sm:space-y-8 animate-fade-in">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight truncate">
             Dashboard
           </h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-1 sm:line-clamp-none">
             Centralized overview of your personal website projects, valuations, and live deployments.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={loadWebsites}
             disabled={loading}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            className="p-2 sm:p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
             title="Refresh projects"
             aria-label="Refresh projects"
           >
@@ -278,7 +278,7 @@ export default function Dashboard() {
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-sm hover:shadow transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-sm hover:shadow transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Website</span>
@@ -348,15 +348,15 @@ export default function Dashboard() {
             </>
           )}
 
-          <div className="relative z-10 p-6 sm:p-8 flex flex-col justify-between min-h-[340px]">
+          <div className="relative z-10 p-4 sm:p-8 flex flex-col justify-between min-h-[300px] sm:min-h-[340px]">
             {/* Hero Top Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/15">
-              <div className="flex items-center gap-2.5">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 backdrop-blur-md">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3.5 sm:pb-4 border-b border-white/15">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 backdrop-blur-md">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                   <span>WEBSITE PREVIEW SHOWCASE</span>
                 </span>
-                <span className="text-xs font-medium text-slate-200 bg-slate-900/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+                <span className="text-[11px] sm:text-xs font-medium text-slate-200 bg-slate-900/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
                   {liveWebsites.length}{' '}
                   {liveWebsites.length === 1
                     ? 'Website with Link'
@@ -364,30 +364,30 @@ export default function Dashboard() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto justify-between sm:justify-end">
                 {spotlightLiveUrl && (
                   <button
                     type="button"
                     onClick={() => setShowClearPreview((prev) => !prev)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900/70 hover:bg-slate-900/90 text-slate-200 border border-white/15 backdrop-blur-md transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium bg-slate-900/70 hover:bg-slate-900/90 text-slate-200 border border-white/15 backdrop-blur-md transition-colors cursor-pointer"
                     title="Toggle clear background preview"
                   >
                     {showClearPreview ? (
                       <>
                         <EyeOff className="w-3.5 h-3.5 text-indigo-300" />
-                        <span>Show Details Overlay</span>
+                        <span>Show Overlay</span>
                       </>
                     ) : (
                       <>
                         <Monitor className="w-3.5 h-3.5 text-emerald-300" />
-                        <span>Peek Full Background</span>
+                        <span>Peek Background</span>
                       </>
                     )}
                   </button>
                 )}
 
                 {liveWebsites.length > 1 && (
-                  <div className="flex items-center gap-1.5 bg-slate-900/60 backdrop-blur-md px-1.5 py-1 rounded-lg border border-white/10">
+                  <div className="flex items-center gap-1 sm:gap-1.5 bg-slate-900/60 backdrop-blur-md px-1.5 py-1 rounded-lg border border-white/10">
                     <button
                       type="button"
                       onClick={() => setAutoPlay((prev) => !prev)}
@@ -406,14 +406,12 @@ export default function Dashboard() {
                       {autoPlay ? (
                         <>
                           <Pause className="w-3 h-3" />
-                          <span className="hidden sm:inline">
-                            {isHeroHovered ? 'Paused' : 'Auto'}
-                          </span>
+                          <span>{isHeroHovered ? 'Paused' : 'Auto'}</span>
                         </>
                       ) : (
                         <>
                           <Play className="w-3 h-3" />
-                          <span className="hidden sm:inline">Paused</span>
+                          <span>Paused</span>
                         </>
                       )}
                     </button>
@@ -429,8 +427,8 @@ export default function Dashboard() {
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    <span className="text-xs font-medium text-slate-200 px-1.5">
-                      {spotlightIndex + 1} / {liveWebsites.length}
+                    <span className="text-xs font-medium text-slate-200 px-1">
+                      {spotlightIndex + 1}/{liveWebsites.length}
                     </span>
                     <button
                       type="button"
@@ -450,21 +448,21 @@ export default function Dashboard() {
             </div>
 
             {activeSpotlight ? (
-              <div className="mt-6 space-y-6">
+              <div className="mt-4 sm:mt-6 space-y-5 sm:space-y-6">
                 {/* Spotlight Main Row */}
                 <div
-                  className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-center transition-opacity duration-300 ${
+                  className={`grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-center transition-opacity duration-300 ${
                     showClearPreview ? 'opacity-15 hover:opacity-100' : 'opacity-100'
                   }`}
                 >
-                  <div className="lg:col-span-7 space-y-3.5">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-sm">
+                  <div className="lg:col-span-7 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-sm">
                         {activeSpotlight.name}
                       </h2>
                       <StatusBadge status={activeSpotlight.status} />
                       {Number(activeSpotlight.price) > 0 && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/25 text-emerald-200 border border-emerald-400/40 backdrop-blur-md">
+                        <span className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/25 text-emerald-200 border border-emerald-400/40 backdrop-blur-md">
                           <Banknote className="w-3.5 h-3.5" />
                           {formatCurrency(activeSpotlight.price, currency)}
                         </span>
@@ -477,17 +475,17 @@ export default function Dashboard() {
                       )}
                     </div>
 
-                    <p className="text-sm sm:text-base text-slate-100/95 leading-relaxed max-w-2xl drop-shadow-xs">
+                    <p className="text-xs sm:text-base text-slate-100/95 leading-relaxed max-w-2xl drop-shadow-xs line-clamp-3 sm:line-clamp-none">
                       {activeSpotlight.description || 'Deployed live web application.'}
                     </p>
 
                     {/* Spotlight Tech Stack */}
                     {parseTechStack(activeSpotlight.tech_stack).length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
                         {parseTechStack(activeSpotlight.tech_stack).map((tech) => (
                           <span
                             key={tech}
-                            className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-900/70 text-slate-100 border border-white/15 backdrop-blur-md"
+                            className="px-2 sm:px-2.5 py-0.5 rounded-md text-[11px] sm:text-xs font-medium bg-slate-900/70 text-slate-100 border border-white/15 backdrop-blur-md"
                           >
                             {tech}
                           </span>
@@ -495,27 +493,27 @@ export default function Dashboard() {
                       </div>
                     )}
 
-                    {/* Spotlight Action Buttons */}
-                    <div className="pt-2 flex flex-wrap items-center gap-3">
+                    {/* Spotlight Action Buttons (2x2 grid on mobile, inline flex on desktop) */}
+                    <div className="pt-1.5 grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
                       {spotlightLiveUrl ? (
                         <a
                           href={spotlightLiveUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md transition-all"
+                          className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md transition-all"
                         >
-                          <Globe className="w-4 h-4" />
+                          <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                           <span>Visit Live Site</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
+                          <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                         </a>
                       ) : null}
 
                       <button
                         type="button"
                         onClick={() => setPreviewWebsite(activeSpotlight)}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-900/75 hover:bg-slate-900 text-white border border-white/20 backdrop-blur-md transition-all cursor-pointer"
+                        className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-900/75 hover:bg-slate-900 text-white border border-white/20 backdrop-blur-md transition-all cursor-pointer"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                         <span>Quick Inspector</span>
                       </button>
 
@@ -524,19 +522,19 @@ export default function Dashboard() {
                           href={normalizeUrl(activeSpotlight.repository_url)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-medium bg-slate-900/65 hover:bg-slate-900/90 text-slate-200 border border-white/15 backdrop-blur-md transition-all"
+                          className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2.5 rounded-xl text-xs font-medium bg-slate-900/65 hover:bg-slate-900/90 text-slate-200 border border-white/15 backdrop-blur-md transition-all"
                         >
-                          <GitBranch className="w-3.5 h-3.5" />
+                          <GitBranch className="w-3.5 h-3.5 shrink-0" />
                           <span>Repo</span>
                         </a>
                       )}
 
                       <Link
                         to={`/websites/${activeSpotlight.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-2.5 rounded-xl text-xs font-medium text-indigo-200 hover:text-white bg-slate-900/50 hover:bg-slate-900/80 border border-white/10 backdrop-blur-md transition-colors"
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2.5 rounded-xl text-xs font-medium text-indigo-200 hover:text-white bg-slate-900/50 hover:bg-slate-900/80 border border-white/10 backdrop-blur-md transition-colors"
                       >
                         <span>Full Details</span>
-                        <ArrowUpRight className="w-3.5 h-3.5" />
+                        <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
                       </Link>
                     </div>
                   </div>
@@ -575,7 +573,7 @@ export default function Dashboard() {
                           href={spotlightLiveUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="group relative block h-44 sm:h-48 w-full overflow-hidden bg-slate-900"
+                          className="group relative block h-36 sm:h-48 w-full overflow-hidden bg-slate-900"
                         >
                           <img
                             src={spotlightScreenshotUrl}
@@ -598,7 +596,7 @@ export default function Dashboard() {
                           </div>
                         </a>
                       ) : (
-                        <div className="h-40 flex items-center justify-center text-xs text-slate-400 p-4 text-center">
+                        <div className="h-32 sm:h-40 flex items-center justify-center text-xs text-slate-400 p-4 text-center">
                           Add a Live Website URL to preview this deployment.
                         </div>
                       )}
@@ -714,11 +712,12 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {summaryCards.map((card) => {
+      {/* Summary Cards (2-col grid on mobile, 5-col on desktop) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        {summaryCards.map((card, idx) => {
           const Icon = card.icon;
           const isSelected = statusFilter === card.filterKey && card.filterKey !== 'ALL';
+          const isLastOdd = idx === summaryCards.length - 1;
           return (
             <button
               key={card.label}
@@ -728,21 +727,23 @@ export default function Dashboard() {
                   prev === card.filterKey ? 'ALL' : card.filterKey
                 )
               }
-              className={`text-left bg-white dark:bg-slate-900 rounded-2xl border p-5 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${
+              className={`text-left bg-white dark:bg-slate-900 rounded-2xl border p-3.5 sm:p-5 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${
+                isLastOdd ? 'col-span-2 sm:col-span-1' : ''
+              } ${
                 isSelected
                   ? 'border-indigo-500 ring-1 ring-indigo-500'
                   : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
                   {card.label}
                 </span>
-                <div className={`w-9 h-9 rounded-xl ${card.bg} flex items-center justify-center`}>
+                <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl ${card.bg} flex items-center justify-center shrink-0`}>
                   <Icon className={`w-4 h-4 ${card.color}`} />
                 </div>
               </div>
-              <p className="mt-3 text-xl font-bold text-slate-900 dark:text-white truncate">
+              <p className="mt-2 sm:mt-3 text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">
                 {loading ? '—' : card.value}
               </p>
             </button>

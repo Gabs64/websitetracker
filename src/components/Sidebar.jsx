@@ -149,6 +149,43 @@ export default function Sidebar() {
           </button>
         </div>
       </aside>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav
+        aria-label="Mobile bottom navigation"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2 py-1.5 flex items-center justify-around shadow-lg"
+      >
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={`bottom-${item.to}`}
+              to={item.to}
+              end={item.end}
+              onClick={() => setMobileOpen(false)}
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center gap-1 py-1.5 px-4 rounded-xl text-[11px] font-medium transition-colors ${
+                  isActive
+                    ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/50'
+                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                }`
+              }
+            >
+              <Icon className="w-4 h-4" />
+              <span>{item.name}</span>
+            </NavLink>
+          );
+        })}
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={signingOut}
+          className="flex flex-col items-center justify-center gap-1 py-1.5 px-3 rounded-xl text-[11px] font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer disabled:opacity-50"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
+        </button>
+      </nav>
     </>
   );
 }

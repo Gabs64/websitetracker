@@ -153,20 +153,20 @@ export default function WebsiteDetails() {
   return (
     <div className="space-y-6">
       {/* Top Breadcrumb & Action Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           to="/websites"
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors self-start"
+          className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to My Websites</span>
         </Link>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setIsEditOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <Pencil className="w-4 h-4" />
             <span>Edit Project</span>
@@ -178,7 +178,7 @@ export default function WebsiteDetails() {
               setDeleteError('');
               setIsDeleteOpen(true);
             }}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border border-rose-200 dark:border-rose-900/60 bg-rose-50/70 dark:bg-rose-950/40 text-rose-600 hover:bg-rose-100 dark:text-rose-400 dark:hover:bg-rose-950/70 transition-colors cursor-pointer"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium border border-rose-200 dark:border-rose-900/60 bg-rose-50/70 dark:bg-rose-950/40 text-rose-600 hover:bg-rose-100 dark:text-rose-400 dark:hover:bg-rose-950/70 transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
             <span>Delete</span>
@@ -189,11 +189,11 @@ export default function WebsiteDetails() {
       {/* Main Details Card */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         {/* Header Section */}
-        <div className="p-6 sm:p-8 border-b border-slate-200 dark:border-slate-800">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="p-4 sm:p-8 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div className="space-y-2.5">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                   {website.name}
                 </h1>
                 <StatusBadge status={website.status} />
@@ -210,13 +210,13 @@ export default function WebsiteDetails() {
             </div>
 
             {/* Quick External Links */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
               {liveUrl && (
                 <a
                   href={liveUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors"
                 >
                   <Globe className="w-4 h-4" />
                   <span>Open Live Website</span>
@@ -228,7 +228,7 @@ export default function WebsiteDetails() {
                   href={repoUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-colors"
                 >
                   <GitBranch className="w-4 h-4" />
                   <span>GitHub Repository</span>
@@ -240,7 +240,7 @@ export default function WebsiteDetails() {
         </div>
 
         {/* Metadata Grid */}
-        <div className="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40">
+        <div className="p-4 sm:p-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40">
           {/* Live Website URL */}
           <div className="space-y-1">
             <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -429,40 +429,71 @@ export default function WebsiteDetails() {
                 </p>
 
                 {Array.isArray(valuation.breakdown) && valuation.breakdown.length > 0 && (
-                  <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase">
-                          <th className="py-2.5 px-4">Component / Module</th>
-                          <th className="py-2.5 px-4">Est. Hours</th>
-                          <th className="py-2.5 px-4 text-right">Valuation ({currency})</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {valuation.breakdown.map((row, idx) => (
-                          <tr key={idx}>
-                            <td className="py-2.5 px-4">
-                              <p className="font-semibold text-slate-800 dark:text-slate-200">
-                                {row.item}
-                              </p>
-                              <p className="text-slate-500 dark:text-slate-400 mt-0.5">
-                                {row.description}
-                              </p>
-                            </td>
-                            <td className="py-2.5 px-4 whitespace-nowrap text-slate-600 dark:text-slate-300">
-                              {row.hours} hrs
-                            </td>
-                            <td className="py-2.5 px-4 whitespace-nowrap text-right font-semibold text-slate-900 dark:text-white">
+                  <>
+                    {/* Mobile Breakdown Cards */}
+                    <div className="sm:hidden space-y-2.5">
+                      {valuation.breakdown.map((row, idx) => (
+                        <div
+                          key={`mob-${idx}`}
+                          className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1.5"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                              {row.item}
+                            </p>
+                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
                               {formatCurrency(
                                 currency === 'USD' ? row.amountUSD : row.amountPHP,
                                 currency
                               )}
-                            </td>
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                            {row.description}
+                          </p>
+                          <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                            Estimated effort: {row.hours} hrs
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Desktop Breakdown Table */}
+                    <div className="hidden sm:block bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase">
+                            <th className="py-2.5 px-4">Component / Module</th>
+                            <th className="py-2.5 px-4">Est. Hours</th>
+                            <th className="py-2.5 px-4 text-right">Valuation ({currency})</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {valuation.breakdown.map((row, idx) => (
+                            <tr key={idx}>
+                              <td className="py-2.5 px-4">
+                                <p className="font-semibold text-slate-800 dark:text-slate-200">
+                                  {row.item}
+                                </p>
+                                <p className="text-slate-500 dark:text-slate-400 mt-0.5">
+                                  {row.description}
+                                </p>
+                              </td>
+                              <td className="py-2.5 px-4 whitespace-nowrap text-slate-600 dark:text-slate-300">
+                                {row.hours} hrs
+                              </td>
+                              <td className="py-2.5 px-4 whitespace-nowrap text-right font-semibold text-slate-900 dark:text-white">
+                                {formatCurrency(
+                                  currency === 'USD' ? row.amountUSD : row.amountPHP,
+                                  currency
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
