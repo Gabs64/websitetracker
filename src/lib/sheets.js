@@ -16,8 +16,8 @@ export const configuredOwnerEmail = (
 const WEBAPP_URL_STORAGE_KEY = 'mwt_sheets_webapp_url';
 const SESSION_TOKEN_KEY = 'mwt_sheets_session_token';
 const SESSION_PROFILE_KEY = 'mwt_sheets_owner_profile';
-const META_DELIMITER = '\n\n<!--MWT_META:';
-const META_END = ':MWT_META-->';
+const META_START_TAG = '<!--MWT_META:';
+const META_END_TAG = ':MWT_META-->';
 
 export const WEBSITE_STATUSES = [
   'Planning',
@@ -100,7 +100,7 @@ export function clearStoredSession() {
  */
 function packWebsitePayload(payload) {
   const cleanNotes = String(payload.notes || '')
-    .split(META_DELIMITER)[0]
+    .split(META_START_TAG)[0]
     .trim();
   const priceNum =
     payload.price !== undefined && payload.price !== '' && !Number.isNaN(Number(payload.price))
@@ -122,7 +122,8 @@ function packWebsitePayload(payload) {
     valuation,
   };
 
-  const packedNotes = `${cleanNotes}${META_DELIMITER}${JSON.stringify(metaObj)}${META_END}`;
+  const metaBlock = `${META_START_TAG}${JSON.stringify(metaObj)}${META_END_TAG}`;
+  const packedNotes = cleanNotes ? `${cleanNotes}\n\n${metaBlock}` : metaBlock;
 
   return {
     ...payload,
@@ -144,11 +145,11 @@ export function unpackWebsiteRecord(raw) {
   let cleanNotes = rawNotes;
   let embeddedMeta = null;
 
-  const startIdx = rawNotes.indexOf(META_DELIMITER);
+  const startIdx = rawNotes.indexOf(META_START_TAG);
   if (startIdx !== -1) {
     cleanNotes = rawNotes.slice(0, startIdx).trim();
-    const jsonStart = startIdx + META_DELIMITER.length;
-    const endIdx = rawNotes.indexOf(META_END, jsonStart);
+    const jsonStart = startIdx + META_START_TAG.length;
+    const endIdx = rawNotes.indexOf(META_END_TAG, jsonStart);
     const jsonStr =
       endIdx !== -1 ? rawNotes.slice(jsonStart, endIdx) : rawNotes.slice(jsonStart);
     embeddedMeta = parseJsonSafe(jsonStr, null);

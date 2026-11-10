@@ -631,3 +631,4 @@ Return JSON with:
     summary: parsed.summary || baseReport.summary,
   };
 }
+

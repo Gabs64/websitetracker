@@ -149,7 +149,7 @@ export default function WebsiteForm({
             ? String(initialData.price)
             : '',
         fsd_details: initialData.fsd_details || '',
-        notes: initialData.notes || '',
+        notes: String(initialData.notes || '').split('<!--MWT_META:')[0].trim(),
         languages: Array.isArray(initialData.languages) ? initialData.languages : [],
         valuation: initialData.valuation || null,
       });
