@@ -20,8 +20,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  EyeOff,
   GitBranch,
   Sparkles,
+  Monitor,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -55,6 +57,8 @@ export default function Dashboard() {
 
   // Hero Spotlight Index for Deployed / Live Websites
   const [spotlightIndex, setSpotlightIndex] = useState(0);
+  const [showClearPreview, setShowClearPreview] = useState(false);
+  const [bgScreenshotFallback, setBgScreenshotFallback] = useState(false);
 
   // Quick Actions: Search, Filter, Layout
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,9 +105,16 @@ export default function Dashboard() {
     if (spotlightIndex >= liveWebsites.length) {
       setSpotlightIndex(0);
     }
+    setBgScreenshotFallback(false);
   }, [liveWebsites.length, spotlightIndex]);
 
   const activeSpotlight = liveWebsites[spotlightIndex] || null;
+  const spotlightLiveUrl = normalizeUrl(activeSpotlight?.website_url);
+  const spotlightScreenshotUrl = spotlightLiveUrl
+    ? bgScreenshotFallback
+      ? `https://s0.wp.com/mshots/v1/${encodeURIComponent(spotlightLiveUrl)}?w=1600&h=900`
+      : `https://image.thum.io/get/width/1600/crop/900/noanimate/${spotlightLiveUrl}`
+    : '';
 
   const stats = computeSummaryStats(websites);
   const filteredWebsites = filterWebsites(websites, searchQuery, statusFilter);
@@ -242,90 +253,162 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* HERO SECTION: Live & Deployed Websites Showcase */}
+      {/* HERO SECTION: Live & Deployed Websites Showcase with Live Website Preview Background */}
       {!loading && (
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-500/20 shadow-lg animate-slide-up">
-          {/* Subtle decorative glow */}
-          <div
-            className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-indigo-500/15 blur-3xl"
-            aria-hidden="true"
-          />
-          <div
-            className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl"
-            aria-hidden="true"
-          />
+        <section className="relative overflow-hidden rounded-2xl bg-slate-950 text-white border border-indigo-500/30 shadow-xl animate-slide-up min-h-[340px]">
+          {/* Live Website Preview Background Layer */}
+          {spotlightLiveUrl ? (
+            <div className="pointer-events-none absolute inset-0 overflow-hidden select-none">
+              {/* Layer 1: Live Website Screenshot Fallback/Backdrop */}
+              <img
+                key={`bg-img-${spotlightLiveUrl}-${bgScreenshotFallback}`}
+                src={spotlightScreenshotUrl}
+                alt={`${activeSpotlight?.name || 'Website'} live preview`}
+                onError={() => {
+                  if (!bgScreenshotFallback) {
+                    setBgScreenshotFallback(true);
+                  }
+                }}
+                className={`w-full h-full object-cover object-top transition-all duration-700 ${
+                  showClearPreview
+                    ? 'scale-100 opacity-95'
+                    : 'scale-[1.02] opacity-65'
+                }`}
+              />
+              {/* Layer 2: Live Rendered Website Iframe Background */}
+              <iframe
+                key={`bg-iframe-${spotlightLiveUrl}`}
+                src={spotlightLiveUrl}
+                title={`${activeSpotlight?.name || 'Live Website'} Background Preview`}
+                tabIndex={-1}
+                loading="lazy"
+                sandbox="allow-scripts allow-same-origin"
+                className={`absolute inset-0 w-[125%] h-[125%] origin-top-left scale-[0.8] border-0 transition-opacity duration-700 pointer-events-none ${
+                  showClearPreview ? 'opacity-95' : 'opacity-60'
+                }`}
+              />
+              {/* Layer 3: Readability Gradient Overlay */}
+              <div
+                className={`absolute inset-0 transition-all duration-500 ${
+                  showClearPreview
+                    ? 'bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-slate-950/50'
+                    : 'bg-gradient-to-r from-slate-950/95 via-slate-950/80 to-slate-950/35'
+                }`}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-slate-950/40" />
+            </div>
+          ) : (
+            <>
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900" />
+              <div
+                className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-indigo-500/15 blur-3xl"
+                aria-hidden="true"
+              />
+              <div
+                className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl"
+                aria-hidden="true"
+              />
+            </>
+          )}
 
-          <div className="relative p-6 sm:p-8">
+          <div className="relative z-10 p-6 sm:p-8 flex flex-col justify-between min-h-[340px]">
             {/* Hero Top Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-white/10">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/15">
               <div className="flex items-center gap-2.5">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-400/30">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 backdrop-blur-md">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                   <span>LIVE PRODUCTION SHOWCASE</span>
                 </span>
-                <span className="text-xs text-slate-300">
+                <span className="text-xs font-medium text-slate-200 bg-slate-900/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
                   {liveWebsites.length}{' '}
                   {liveWebsites.length === 1 ? 'Website Live' : 'Websites Live'}
                 </span>
               </div>
 
-              {liveWebsites.length > 1 && (
-                <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
+                {spotlightLiveUrl && (
                   <button
                     type="button"
-                    onClick={() =>
-                      setSpotlightIndex((prev) =>
-                        prev === 0 ? liveWebsites.length - 1 : prev - 1
-                      )
-                    }
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                    aria-label="Previous live website"
+                    onClick={() => setShowClearPreview((prev) => !prev)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900/70 hover:bg-slate-900/90 text-slate-200 border border-white/15 backdrop-blur-md transition-colors cursor-pointer"
+                    title="Toggle clear background preview"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    {showClearPreview ? (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5 text-indigo-300" />
+                        <span>Show Details Overlay</span>
+                      </>
+                    ) : (
+                      <>
+                        <Monitor className="w-3.5 h-3.5 text-emerald-300" />
+                        <span>Peek Full Background</span>
+                      </>
+                    )}
                   </button>
-                  <span className="text-xs font-medium text-slate-300 px-2">
-                    {spotlightIndex + 1} / {liveWebsites.length}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSpotlightIndex((prev) =>
-                        prev === liveWebsites.length - 1 ? 0 : prev + 1
-                      )
-                    }
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                    aria-label="Next live website"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+                )}
+
+                {liveWebsites.length > 1 && (
+                  <div className="flex items-center gap-1.5 bg-slate-900/60 backdrop-blur-md px-1.5 py-1 rounded-lg border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSpotlightIndex((prev) =>
+                          prev === 0 ? liveWebsites.length - 1 : prev - 1
+                        )
+                      }
+                      className="p-1 rounded-md hover:bg-white/20 text-white transition-colors cursor-pointer"
+                      aria-label="Previous live website"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs font-medium text-slate-200 px-1.5">
+                      {spotlightIndex + 1} / {liveWebsites.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSpotlightIndex((prev) =>
+                          prev === liveWebsites.length - 1 ? 0 : prev + 1
+                        )
+                      }
+                      className="p-1 rounded-md hover:bg-white/20 text-white transition-colors cursor-pointer"
+                      aria-label="Next live website"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {activeSpotlight ? (
               <div className="mt-6 space-y-6">
                 {/* Spotlight Main Row */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-                  <div className="lg:col-span-2 space-y-3.5">
+                <div
+                  className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-center transition-opacity duration-300 ${
+                    showClearPreview ? 'opacity-15 hover:opacity-100' : 'opacity-100'
+                  }`}
+                >
+                  <div className="lg:col-span-7 space-y-3.5">
                     <div className="flex flex-wrap items-center gap-2.5">
-                      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-sm">
                         {activeSpotlight.name}
                       </h2>
                       {Number(activeSpotlight.price) > 0 && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/25 text-emerald-200 border border-emerald-400/40 backdrop-blur-md">
                           <Banknote className="w-3.5 h-3.5" />
                           {formatCurrency(activeSpotlight.price, currency)}
                         </span>
                       )}
                       {activeSpotlight.valuation?.detectedCategory && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-500/25 text-indigo-200 border border-indigo-400/30">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-500/30 text-indigo-100 border border-indigo-400/40 backdrop-blur-md">
                           <Sparkles className="w-3 h-3" />
                           {activeSpotlight.valuation.detectedCategory}
                         </span>
                       )}
                     </div>
 
-                    <p className="text-sm sm:text-base text-slate-200/90 leading-relaxed max-w-2xl">
+                    <p className="text-sm sm:text-base text-slate-100/95 leading-relaxed max-w-2xl drop-shadow-xs">
                       {activeSpotlight.description || 'Deployed live web application.'}
                     </p>
 
@@ -335,7 +418,7 @@ export default function Dashboard() {
                         {parseTechStack(activeSpotlight.tech_stack).map((tech) => (
                           <span
                             key={tech}
-                            className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-white/10 text-slate-200 border border-white/10"
+                            className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-900/70 text-slate-100 border border-white/15 backdrop-blur-md"
                           >
                             {tech}
                           </span>
@@ -345,12 +428,12 @@ export default function Dashboard() {
 
                     {/* Spotlight Action Buttons */}
                     <div className="pt-2 flex flex-wrap items-center gap-3">
-                      {normalizeUrl(activeSpotlight.website_url) ? (
+                      {spotlightLiveUrl ? (
                         <a
-                          href={normalizeUrl(activeSpotlight.website_url)}
+                          href={spotlightLiveUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-sm transition-all"
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md transition-all"
                         >
                           <Globe className="w-4 h-4" />
                           <span>Visit Live Site</span>
@@ -361,7 +444,7 @@ export default function Dashboard() {
                       <button
                         type="button"
                         onClick={() => setPreviewWebsite(activeSpotlight)}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-900/75 hover:bg-slate-900 text-white border border-white/20 backdrop-blur-md transition-all cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
                         <span>Quick Inspector</span>
@@ -372,7 +455,7 @@ export default function Dashboard() {
                           href={normalizeUrl(activeSpotlight.repository_url)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-medium bg-white/5 hover:bg-white/15 text-slate-200 border border-white/10 transition-all"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-medium bg-slate-900/65 hover:bg-slate-900/90 text-slate-200 border border-white/15 backdrop-blur-md transition-all"
                         >
                           <GitBranch className="w-3.5 h-3.5" />
                           <span>Repo</span>
@@ -381,7 +464,7 @@ export default function Dashboard() {
 
                       <Link
                         to={`/websites/${activeSpotlight.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-2.5 rounded-xl text-xs font-medium text-indigo-300 hover:text-white transition-colors"
+                        className="inline-flex items-center gap-1 px-3 py-2.5 rounded-xl text-xs font-medium text-indigo-200 hover:text-white bg-slate-900/50 hover:bg-slate-900/80 border border-white/10 backdrop-blur-md transition-colors"
                       >
                         <span>Full Details</span>
                         <ArrowUpRight className="w-3.5 h-3.5" />
@@ -389,77 +472,113 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Right Column: Live URL Card & Languages Breakdown */}
-                  <div className="bg-white/5 backdrop-blur-xs rounded-xl border border-white/10 p-4 space-y-4">
-                    <div>
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                        Production Endpoint
-                      </span>
-                      {normalizeUrl(activeSpotlight.website_url) ? (
+                  {/* Right Column: Live Website Mini-Browser Window + Languages */}
+                  <div className="lg:col-span-5">
+                    <div className="rounded-xl overflow-hidden border border-white/20 bg-slate-950/80 backdrop-blur-md shadow-2xl">
+                      {/* Browser Top Bar */}
+                      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-900/90 border-b border-white/10">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+                        </div>
+                        <div className="flex-1 mx-2 px-2.5 py-0.5 rounded bg-slate-950/90 border border-white/10 text-[11px] text-slate-300 truncate text-center">
+                          {spotlightLiveUrl
+                            ? spotlightLiveUrl.replace(/^https?:\/\//i, '')
+                            : 'No live URL configured'}
+                        </div>
+                        {spotlightLiveUrl && (
+                          <a
+                            href={spotlightLiveUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-slate-400 hover:text-emerald-300 transition-colors"
+                            title="Open in new tab"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Browser Viewport Preview */}
+                      {spotlightLiveUrl ? (
                         <a
-                          href={normalizeUrl(activeSpotlight.website_url)}
+                          href={spotlightLiveUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-1 flex items-center justify-between gap-2 text-xs font-medium text-emerald-300 hover:underline truncate"
+                          className="group relative block h-44 sm:h-48 w-full overflow-hidden bg-slate-900"
                         >
-                          <span className="truncate">
-                            {activeSpotlight.website_url}
-                          </span>
-                          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                          <img
+                            src={spotlightScreenshotUrl}
+                            alt={`${activeSpotlight.name} preview`}
+                            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <iframe
+                            src={spotlightLiveUrl}
+                            title={`${activeSpotlight.name} mini preview`}
+                            tabIndex={-1}
+                            loading="lazy"
+                            sandbox="allow-scripts allow-same-origin"
+                            className="pointer-events-none absolute inset-0 w-[200%] h-[200%] origin-top-left scale-50 border-0"
+                          />
+                          <div className="absolute inset-0 bg-slate-950/0 group-hover:bg-slate-950/40 transition-colors flex items-center justify-center">
+                            <span className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-slate-950 shadow-lg">
+                              <span>Launch Website</span>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </span>
+                          </div>
                         </a>
                       ) : (
-                        <p className="mt-1 text-xs text-slate-400">
-                          No production URL attached
-                        </p>
-                      )}
-                    </div>
-
-                    {Array.isArray(activeSpotlight.languages) &&
-                      activeSpotlight.languages.length > 0 && (
-                        <div className="space-y-2 pt-2 border-t border-white/10">
-                          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">
-                            Codebase Languages
-                          </span>
-                          <div className="h-2 w-full rounded-full overflow-hidden flex bg-white/10">
-                            {activeSpotlight.languages.map((lang) => (
-                              <div
-                                key={lang.name}
-                                style={{
-                                  width: `${Math.max(lang.percentage, 1.5)}%`,
-                                  backgroundColor: getLanguageColor(lang.name),
-                                }}
-                                title={`${lang.name}: ${lang.percentage}%`}
-                              />
-                            ))}
-                          </div>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-300">
-                            {activeSpotlight.languages.slice(0, 4).map((lang) => (
-                              <span
-                                key={lang.name}
-                                className="inline-flex items-center gap-1"
-                              >
-                                <span
-                                  className="w-2 h-2 rounded-full"
-                                  style={{
-                                    backgroundColor: getLanguageColor(lang.name),
-                                  }}
-                                />
-                                <span>{lang.name}</span>
-                                <span className="text-slate-400">
-                                  {lang.percentage}%
-                                </span>
-                              </span>
-                            ))}
-                          </div>
+                        <div className="h-40 flex items-center justify-center text-xs text-slate-400 p-4 text-center">
+                          Add a Live Website URL to preview this deployment.
                         </div>
                       )}
+
+                      {/* Codebase Languages Bar */}
+                      {Array.isArray(activeSpotlight.languages) &&
+                        activeSpotlight.languages.length > 0 && (
+                          <div className="p-3 bg-slate-900/90 border-t border-white/10 space-y-1.5">
+                            <div className="h-1.5 w-full rounded-full overflow-hidden flex bg-white/10">
+                              {activeSpotlight.languages.map((lang) => (
+                                <div
+                                  key={lang.name}
+                                  style={{
+                                    width: `${Math.max(lang.percentage, 1.5)}%`,
+                                    backgroundColor: getLanguageColor(lang.name),
+                                  }}
+                                  title={`${lang.name}: ${lang.percentage}%`}
+                                />
+                              ))}
+                            </div>
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-300">
+                              {activeSpotlight.languages.slice(0, 4).map((lang) => (
+                                <span
+                                  key={lang.name}
+                                  className="inline-flex items-center gap-1"
+                                >
+                                  <span
+                                    className="w-2 h-2 rounded-full"
+                                    style={{
+                                      backgroundColor: getLanguageColor(lang.name),
+                                    }}
+                                  />
+                                  <span>{lang.name}</span>
+                                  <span className="text-slate-400">
+                                    {lang.percentage}%
+                                  </span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Strip of All Deployed / Live Websites */}
                 {liveWebsites.length > 1 && (
-                  <div className="pt-4 border-t border-white/10">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
+                  <div className="pt-4 border-t border-white/15">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-300 mb-2.5">
                       All Deployed / Live Websites ({liveWebsites.length})
                     </p>
                     <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
@@ -470,10 +589,10 @@ export default function Dashboard() {
                             key={site.id}
                             type="button"
                             onClick={() => setSpotlightIndex(idx)}
-                            className={`group flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-left text-xs transition-all shrink-0 cursor-pointer border ${
+                            className={`group flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-left text-xs transition-all shrink-0 cursor-pointer border backdrop-blur-md ${
                               isCurrent
                                 ? 'bg-white text-slate-900 border-white font-semibold shadow-sm'
-                                : 'bg-white/5 hover:bg-white/10 text-slate-200 border-white/10'
+                                : 'bg-slate-900/65 hover:bg-slate-900/90 text-slate-100 border-white/15'
                             }`}
                           >
                             <span
