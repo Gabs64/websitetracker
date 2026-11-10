@@ -15,7 +15,6 @@ import {
   Banknote,
   Sparkles,
   FileCode2,
-  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -29,8 +28,6 @@ import {
   formatCurrency,
   getPreferredCurrency,
   getLanguageColor,
-  analyzeGitHubRepository,
-  generateAiWebsiteValuation,
 } from '../lib/githubAndAi';
 import StatusBadge from '../components/StatusBadge';
 import WebsiteForm, { DeleteConfirmModal } from '../components/WebsiteForm';
@@ -45,11 +42,9 @@ export default function WebsiteDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Edit, Sync & Delete Modals
+  // Edit & Delete Modals
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [syncingGithub, setSyncingGithub] = useState(false);
-  const [syncError, setSyncError] = useState('');
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -87,88 +82,6 @@ export default function WebsiteDetails() {
       return { error: null };
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  // One-click refresh of GitHub languages, project details & Groq AI valuation directly from Details view
-  const handleSyncGitHubAndValuation = async () => {
-    if (!user || !website) return;
-    setSyncingGithub(true);
-    setSyncError('');
-    try {
-      let languages = Array.isArray(website.languages) ? website.languages : [];
-      let metrics = null;
-      let mergedTechList = parseTechStack(website.tech_stack);
-      let nextWebsiteUrl = website.website_url || null;
-      let ghDescription = '';
-
-      if (website.repository_url) {
-        const ghRes = await analyzeGitHubRepository(website.repository_url);
-        if (ghRes.ok) {
-          languages = ghRes.languages;
-          metrics = ghRes.metrics;
-          ghDescription = ghRes.suggestedDescription || '';
-          if (!nextWebsiteUrl && ghRes.suggestedHomepage) {
-            nextWebsiteUrl = ghRes.suggestedHomepage;
-          }
-          const detectedTech = parseTechStack(ghRes.suggestedTechStack);
-          mergedTechList = Array.from(new Set([...mergedTechList, ...detectedTech]));
-        }
-      }
-
-      const valuation = await generateAiWebsiteValuation({
-        name: website.name,
-        description: website.description || ghDescription,
-        fsdDetails: website.fsd_details,
-        techStack: mergedTechList.join(', '),
-        languages,
-        repoMetrics: metrics,
-        currency,
-      });
-
-      if (Array.isArray(valuation.detectedTechStack) && valuation.detectedTechStack.length > 0) {
-        mergedTechList = Array.from(
-          new Set([...mergedTechList, ...valuation.detectedTechStack])
-        );
-      }
-
-      const nextName =
-        valuation.suggestedProjectName &&
-        (!website.name || website.name.toLowerCase() === 'untitled project')
-          ? valuation.suggestedProjectName
-          : website.name;
-
-      const nextDescription =
-        valuation.suggestedDescription ||
-        valuation.summary ||
-        ghDescription ||
-        website.description;
-
-      const nextPrice =
-        currency === 'USD'
-          ? valuation.recommendedPriceUSD
-          : valuation.recommendedPricePHP;
-
-      const { data, error: updateErr } = await updateWebsite(website.id, user.id, {
-        ...website,
-        name: nextName,
-        description: nextDescription,
-        website_url: nextWebsiteUrl,
-        tech_stack: mergedTechList.join(', '),
-        price: nextPrice,
-        languages,
-        valuation,
-      });
-
-      if (updateErr) {
-        setSyncError(updateErr);
-      } else if (data) {
-        setWebsite(data);
-      }
-    } catch (err) {
-      setSyncError(err?.message || 'Failed to run Groq AI valuation.');
-    } finally {
-      setSyncingGithub(false);
     }
   };
 
@@ -252,18 +165,6 @@ export default function WebsiteDetails() {
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
-            onClick={handleSyncGitHubAndValuation}
-            disabled={syncingGithub}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border border-indigo-200 dark:border-indigo-800/70 bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-700 hover:bg-indigo-100 dark:text-indigo-300 dark:hover:bg-indigo-950/70 transition-colors cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${syncingGithub ? 'animate-spin' : ''}`} />
-            <span>
-              {syncingGithub ? 'Analyzing...' : 'Sync GitHub & AI Valuation'}
-            </span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setIsEditOpen(true)}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
@@ -286,13 +187,6 @@ export default function WebsiteDetails() {
       </div>
 
       {/* Main Details Card */}
-      {syncError && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 flex items-center gap-3 text-xs text-rose-700 dark:text-rose-300">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{syncError}</span>
-        </div>
-      )}
-
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         {/* Header Section */}
         <div className="p-6 sm:p-8 border-b border-slate-200 dark:border-slate-800">
@@ -402,7 +296,7 @@ export default function WebsiteDetails() {
             <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
               {Number(website.price) > 0
                 ? formatCurrency(website.price, currency)
-                : 'Not set — Click "Sync GitHub & AI Valuation" or "Edit"'}
+                : 'Not set — Click "Edit Project"'}
             </p>
           </div>
 

@@ -367,47 +367,88 @@ export default function WebsiteForm({
 
     const webUrlCheck = validateUrl(formData.website_url);
     const repoUrlCheck = validateUrl(formData.repository_url);
-    const numericPrice = formData.price !== '' ? Number(formData.price) : 0;
+    const manualNumericPrice = formData.price !== '' ? Number(formData.price) : 0;
 
+    let finalName = formData.name.trim();
+    let finalDescription = formData.description.trim();
+    let finalWebUrl = webUrlCheck.value;
+    let mergedTechList = parseTechStack(formData.tech_stack);
+    let finalLanguages = Array.isArray(formData.languages) ? formData.languages : [];
+    let currentMetrics = repoMetrics;
     let finalValuation = formData.valuation || null;
-    let finalLanguages = formData.languages || [];
+    let finalPrice = manualNumericPrice;
 
-    // If the user manually entered a price and hasn't generated a breakdown yet,
-    // auto-generate the FSD breakdown based on their manual total price before saving!
-    if (numericPrice > 0 && !finalValuation && formData.fsd_details.trim()) {
-      setEstimatingPrice(true);
-      try {
-        finalValuation = await generateAiWebsiteValuation({
-          name: formData.name.trim(),
-          description: formData.description.trim(),
-          fsdDetails: formData.fsd_details.trim(),
-          techStack: formatTechStack(formData.tech_stack),
-          languages: finalLanguages,
-          repoMetrics,
-          targetPrice: numericPrice,
-          currency,
-        });
-      } catch {
-        // If AI call fails during submit, still allow saving the manual price
-      } finally {
-        setEstimatingPrice(false);
+    setEstimatingPrice(true);
+    try {
+      // 1. Automatically sync GitHub repository languages, homepage & tech stack if Repository URL is set
+      if (repoUrlCheck.value) {
+        const ghRes = await analyzeGitHubRepository(repoUrlCheck.value);
+        if (ghRes.ok) {
+          finalLanguages = ghRes.languages;
+          currentMetrics = ghRes.metrics;
+          if (!finalWebUrl && ghRes.suggestedHomepage) {
+            const hpCheck = validateUrl(ghRes.suggestedHomepage);
+            if (hpCheck.valid) finalWebUrl = hpCheck.value;
+          }
+          const ghTech = parseTechStack(ghRes.suggestedTechStack);
+          mergedTechList = Array.from(new Set([...mergedTechList, ...ghTech]));
+        }
       }
-    } else if (numericPrice > 0 && finalValuation) {
-      finalValuation = scaleValuationToManualPrice(
-        finalValuation,
-        numericPrice,
-        currency
-      );
+
+      // 2. Automatically run Groq AI Valuation & Breakdown based on the FSD (and manual price if provided)
+      if (formData.fsd_details.trim()) {
+        try {
+          const aiValuation = await generateAiWebsiteValuation({
+            name: finalName,
+            description: finalDescription,
+            fsdDetails: formData.fsd_details.trim(),
+            techStack: mergedTechList.join(', '),
+            languages: finalLanguages,
+            repoMetrics: currentMetrics,
+            targetPrice: manualNumericPrice > 0 ? manualNumericPrice : 0,
+            currency,
+          });
+
+          finalValuation = aiValuation;
+
+          if (
+            Array.isArray(aiValuation.detectedTechStack) &&
+            aiValuation.detectedTechStack.length > 0
+          ) {
+            mergedTechList = Array.from(
+              new Set([...mergedTechList, ...aiValuation.detectedTechStack])
+            );
+          }
+
+          if (manualNumericPrice <= 0) {
+            finalPrice =
+              currency === 'USD'
+                ? aiValuation.recommendedPriceUSD
+                : aiValuation.recommendedPricePHP;
+          }
+        } catch {
+          // If AI call fails on save but a previous valuation exists, scale it to manual price
+          if (manualNumericPrice > 0 && finalValuation) {
+            finalValuation = scaleValuationToManualPrice(
+              finalValuation,
+              manualNumericPrice,
+              currency
+            );
+          }
+        }
+      }
+    } finally {
+      setEstimatingPrice(false);
     }
 
     const payload = {
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      website_url: webUrlCheck.value,
+      name: finalName,
+      description: finalDescription,
+      website_url: finalWebUrl,
       repository_url: repoUrlCheck.value,
-      tech_stack: formatTechStack(formData.tech_stack),
+      tech_stack: mergedTechList.join(', '),
       status: formData.status,
-      price: numericPrice,
+      price: finalPrice,
       fsd_details: formData.fsd_details.trim(),
       notes: formData.notes.trim(),
       languages: finalLanguages,
@@ -877,13 +918,13 @@ export default function WebsiteForm({
             </button>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || estimatingPrice}
               className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
             >
-              {submitting
+              {submitting || estimatingPrice
                 ? isEditMode
-                  ? 'Saving Changes...'
-                  : 'Adding Website...'
+                  ? 'Syncing & Saving Changes...'
+                  : 'Syncing & Adding Website...'
                 : isEditMode
                 ? 'Save Changes'
                 : 'Add Website'}
