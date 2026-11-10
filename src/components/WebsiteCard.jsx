@@ -7,9 +7,15 @@ import {
   Pencil,
   Trash2,
   ArrowUpRight,
+  Banknote,
 } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import { parseTechStack, normalizeUrl } from '../lib/sheets';
+import {
+  formatCurrency,
+  getPreferredCurrency,
+  getLanguageColor,
+} from '../lib/githubAndAi';
 
 export function formatDate(dateString) {
   if (!dateString) return '—';
@@ -26,6 +32,9 @@ export default function WebsiteCard({ website, onEdit, onDelete }) {
   const techItems = parseTechStack(website.tech_stack);
   const liveUrl = normalizeUrl(website.website_url);
   const repoUrl = normalizeUrl(website.repository_url);
+  const currency = getPreferredCurrency();
+  const hasPrice = Number(website.price) > 0;
+  const languages = Array.isArray(website.languages) ? website.languages : [];
 
   return (
     <div className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between">
@@ -43,8 +52,25 @@ export default function WebsiteCard({ website, onEdit, onDelete }) {
           </div>
         </div>
 
+        {/* Price & AI Category Pill */}
+        {(hasPrice || website.valuation?.detectedCategory) && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {hasPrice && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60">
+                <Banknote className="w-3.5 h-3.5" />
+                {formatCurrency(website.price, currency)}
+              </span>
+            )}
+            {website.valuation?.detectedCategory && (
+              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+                {website.valuation.detectedCategory}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Description */}
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 line-clamp-2 min-h-[2.5rem]">
+        <p className="mt-2.5 text-sm text-slate-600 dark:text-slate-400 line-clamp-2 min-h-[2.5rem]">
           {website.description || 'No description provided.'}
         </p>
 
@@ -84,9 +110,41 @@ export default function WebsiteCard({ website, onEdit, onDelete }) {
           )}
         </div>
 
+        {/* GitHub Language Percentage Bar */}
+        {languages.length > 0 && (
+          <div className="mt-3.5 space-y-1.5">
+            <div className="h-2 w-full rounded-full overflow-hidden flex bg-slate-100 dark:bg-slate-800">
+              {languages.map((lang) => (
+                <div
+                  key={lang.name}
+                  style={{
+                    width: `${Math.max(lang.percentage, 1.5)}%`,
+                    backgroundColor: getLanguageColor(lang.name),
+                  }}
+                  title={`${lang.name}: ${lang.percentage}%`}
+                />
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+              {languages.slice(0, 4).map((lang) => (
+                <span key={lang.name} className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: getLanguageColor(lang.name) }}
+                  />
+                  <span className="font-medium text-slate-700 dark:text-slate-300">
+                    {lang.name}
+                  </span>
+                  <span>{lang.percentage}%</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Tech Stack Badges */}
         {techItems.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
+          <div className="mt-3.5 flex flex-wrap gap-1.5">
             {techItems.slice(0, 5).map((tech) => (
               <span
                 key={tech}
@@ -146,4 +204,3 @@ export default function WebsiteCard({ website, onEdit, onDelete }) {
     </div>
   );
 }
-

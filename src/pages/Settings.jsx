@@ -10,9 +10,17 @@ import {
   List,
   CheckCircle2,
   AlertCircle,
+  Banknote,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate } from '../components/WebsiteCard';
+import {
+  getPreferredCurrency,
+  setPreferredCurrency,
+  getGeminiApiKey,
+  setCustomGeminiApiKey,
+} from '../lib/githubAndAi';
 
 export function applyThemePreference(theme) {
   const root = document.documentElement;
@@ -40,6 +48,9 @@ export default function Settings() {
   const [defaultView, setDefaultView] = useState(() => {
     return localStorage.getItem('mwt_default_view') || 'grid';
   });
+  const [currency, setCurrency] = useState(() => getPreferredCurrency());
+  const [geminiKey, setGeminiKey] = useState(() => getGeminiApiKey());
+  const [geminiSaved, setGeminiSaved] = useState(false);
 
   // Password Change State
   const [newPassword, setNewPassword] = useState('');
@@ -56,6 +67,18 @@ export default function Settings() {
   const handleDefaultViewChange = (nextView) => {
     setDefaultView(nextView);
     localStorage.setItem('mwt_default_view', nextView);
+  };
+
+  const handleCurrencyChange = (nextCurr) => {
+    const saved = setPreferredCurrency(nextCurr);
+    setCurrency(saved);
+  };
+
+  const handleSaveGeminiKey = (e) => {
+    e.preventDefault();
+    setCustomGeminiApiKey(geminiKey);
+    setGeminiSaved(true);
+    setTimeout(() => setGeminiSaved(false), 2500);
   };
 
   const handlePasswordSubmit = async (e) => {
@@ -104,7 +127,7 @@ export default function Settings() {
           Settings
         </h1>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          Manage your single-owner account details and basic application preferences.
+          Manage your single-owner account details, currency, and application preferences.
         </p>
       </div>
 
@@ -153,17 +176,47 @@ export default function Settings() {
         </div>
       </section>
 
-      {/* 2. Application Preferences */}
+      {/* 2. Application & Currency Preferences */}
       <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-6">
         <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-4">
           <Monitor className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
           <div>
             <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-              Application Preferences
+              Application & Valuation Preferences
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Customize appearance and default project view on this device.
+              Customize currency, appearance, default view, and optional Gemini AI integration.
             </p>
+          </div>
+        </div>
+
+        {/* Currency Selector (PHP ₱ / USD $) */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300">
+            <Banknote className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Website Pricing Currency</span>
+          </label>
+          <div className="grid grid-cols-2 gap-3 max-w-md">
+            {[
+              { id: 'PHP', label: 'Philippine Peso (₱ PHP)' },
+              { id: 'USD', label: 'US Dollar ($ USD)' },
+            ].map((item) => {
+              const active = currency === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleCurrencyChange(item.id)}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
+                    active
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                      : 'bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -229,6 +282,36 @@ export default function Settings() {
             })}
           </div>
         </div>
+
+        {/* Optional Gemini API Key for AI Price Estimator */}
+        <form onSubmit={handleSaveGeminiKey} className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2 max-w-md">
+          <label
+            htmlFor="gemini-api-key"
+            className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Optional Gemini API Key</span>
+            <span className="text-[11px] font-normal text-slate-400">
+              (Built-in Smart AI Estimator works automatically without a key)
+            </span>
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              id="gemini-api-key"
+              type="password"
+              value={geminiKey}
+              onChange={(e) => setGeminiKey(e.target.value)}
+              placeholder="AIzaSy... (Optional)"
+              className="flex-1 px-3.5 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              type="submit"
+              className="px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white cursor-pointer"
+            >
+              {geminiSaved ? 'Saved!' : 'Save Key'}
+            </button>
+          </div>
+        </form>
       </section>
 
       {/* 3. Update Owner Password */}
@@ -311,4 +394,3 @@ export default function Settings() {
     </div>
   );
 }
-

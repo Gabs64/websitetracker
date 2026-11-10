@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * MY WEBSITE TRACKER — GOOGLE SHEETS BACKEND & SINGLE-OWNER AUTH (Code.gs)
- * Version: 1.0
+ * Version: 1.1
  * Storage: 100% Google Sheets (`profiles` tab & `websites` tab)
  * ============================================================================
  *
@@ -49,6 +49,10 @@ const WEBSITE_HEADERS = [
   'notes',
   'created_at',
   'updated_at',
+  'price',
+  'fsd_details',
+  'languages_json',
+  'valuation_json',
 ];
 
 const VALID_STATUSES = [
@@ -119,7 +123,7 @@ function doGet() {
   return jsonResponse({
     ok: true,
     service: 'My Website Tracker - Google Sheets Database',
-    version: '1.0',
+    version: '1.1',
   });
 }
 
@@ -340,8 +344,9 @@ function getAllWebsiteRows(websiteSheet, ownerId) {
   const lastRow = websiteSheet.getLastRow();
   if (lastRow < 2) return [];
 
+  const maxCols = Math.max(websiteSheet.getLastColumn(), WEBSITE_HEADERS.length);
   const rows = websiteSheet
-    .getRange(2, 1, lastRow - 1, WEBSITE_HEADERS.length)
+    .getRange(2, 1, lastRow - 1, maxCols)
     .getValues();
 
   const items = [];
@@ -365,6 +370,10 @@ function getAllWebsiteRows(websiteSheet, ownerId) {
       notes: String(r[8] || ''),
       created_at: String(r[9] || ''),
       updated_at: String(r[10] || ''),
+      price: r[11] !== undefined && r[11] !== '' ? Number(r[11]) : 0,
+      fsd_details: String(r[12] || ''),
+      languages_json: String(r[13] || '[]'),
+      valuation_json: String(r[14] || ''),
     });
   }
 
@@ -384,6 +393,10 @@ function stripInternalFields(item) {
     notes: item.notes,
     created_at: item.created_at,
     updated_at: item.updated_at,
+    price: item.price,
+    fsd_details: item.fsd_details,
+    languages_json: item.languages_json,
+    valuation_json: item.valuation_json,
   };
 }
 
@@ -418,6 +431,8 @@ function handleCreateWebsite(websiteSheet, owner, payload) {
 
   const status = VALID_STATUSES.indexOf(payload.status) !== -1 ? payload.status : 'Planning';
   const now = new Date().toISOString();
+  const parsedPrice = payload.price !== undefined && payload.price !== '' ? Number(payload.price) : 0;
+
   const newWebsite = {
     id: Utilities.getUuid(),
     owner_id: owner.id,
@@ -430,6 +445,18 @@ function handleCreateWebsite(websiteSheet, owner, payload) {
     notes: String(payload.notes || '').trim(),
     created_at: now,
     updated_at: now,
+    price: isNaN(parsedPrice) ? 0 : parsedPrice,
+    fsd_details: String(payload.fsd_details || '').trim(),
+    languages_json:
+      typeof payload.languages_json === 'string'
+        ? payload.languages_json
+        : JSON.stringify(payload.languages_json || []),
+    valuation_json:
+      typeof payload.valuation_json === 'string'
+        ? payload.valuation_json
+        : payload.valuation_json
+        ? JSON.stringify(payload.valuation_json)
+        : '',
   };
 
   websiteSheet.appendRow([
@@ -444,6 +471,10 @@ function handleCreateWebsite(websiteSheet, owner, payload) {
     newWebsite.notes,
     newWebsite.created_at,
     newWebsite.updated_at,
+    newWebsite.price,
+    newWebsite.fsd_details,
+    newWebsite.languages_json,
+    newWebsite.valuation_json,
   ]);
 
   return jsonResponse({
@@ -475,6 +506,10 @@ function handleUpdateWebsite(websiteSheet, owner, id, payload) {
 
   const status = VALID_STATUSES.indexOf(payload.status) !== -1 ? payload.status : existing.status;
   const now = new Date().toISOString();
+  const parsedPrice =
+    payload.price !== undefined && payload.price !== ''
+      ? Number(payload.price)
+      : existing.price;
 
   const updated = {
     id: existing.id,
@@ -488,6 +523,25 @@ function handleUpdateWebsite(websiteSheet, owner, id, payload) {
     notes: String(payload.notes || '').trim(),
     created_at: existing.created_at || now,
     updated_at: now,
+    price: isNaN(parsedPrice) ? 0 : parsedPrice,
+    fsd_details:
+      payload.fsd_details !== undefined
+        ? String(payload.fsd_details).trim()
+        : existing.fsd_details,
+    languages_json:
+      payload.languages_json !== undefined
+        ? typeof payload.languages_json === 'string'
+          ? payload.languages_json
+          : JSON.stringify(payload.languages_json || [])
+        : existing.languages_json,
+    valuation_json:
+      payload.valuation_json !== undefined
+        ? typeof payload.valuation_json === 'string'
+          ? payload.valuation_json
+          : payload.valuation_json
+          ? JSON.stringify(payload.valuation_json)
+          : ''
+        : existing.valuation_json,
   };
 
   websiteSheet.getRange(existing._rowNumber, 1, 1, WEBSITE_HEADERS.length).setValues([
@@ -503,6 +557,10 @@ function handleUpdateWebsite(websiteSheet, owner, id, payload) {
       updated.notes,
       updated.created_at,
       updated.updated_at,
+      updated.price,
+      updated.fsd_details,
+      updated.languages_json,
+      updated.valuation_json,
     ],
   ]);
 
@@ -547,6 +605,20 @@ function ensureSheet(ss, name, headers) {
     sheet.appendRow(headers);
     sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
     sheet.setFrozenRows(1);
+  } else {
+    // Automatically add any newly introduced header columns to existing sheets
+    const currentHeaders = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), headers.length)).getValues()[0];
+    let updatedHeaders = false;
+    for (let i = 0; i < headers.length; i++) {
+      if (String(currentHeaders[i] || '').trim() !== headers[i]) {
+        currentHeaders[i] = headers[i];
+        updatedHeaders = true;
+      }
+    }
+    if (updatedHeaders) {
+      sheet.getRange(1, 1, 1, headers.length).setValues([currentHeaders.slice(0, headers.length)]);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    }
   }
   return sheet;
 }

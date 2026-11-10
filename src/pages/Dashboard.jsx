@@ -16,6 +16,7 @@ import {
   Trash2,
   AlertCircle,
   RefreshCw,
+  Banknote,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -28,6 +29,11 @@ import {
   WEBSITE_STATUSES,
   normalizeUrl,
 } from '../lib/sheets';
+import {
+  formatCurrency,
+  getPreferredCurrency,
+  getLanguageColor,
+} from '../lib/githubAndAi';
 import WebsiteCard, { formatDate } from '../components/WebsiteCard';
 import WebsiteForm, { DeleteConfirmModal } from '../components/WebsiteForm';
 import StatusBadge from '../components/StatusBadge';
@@ -53,6 +59,8 @@ export default function Dashboard() {
   const [deletingWebsite, setDeletingWebsite] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  const currency = getPreferredCurrency();
 
   const loadWebsites = useCallback(async () => {
     setLoading(true);
@@ -158,6 +166,14 @@ export default function Dashboard() {
       bg: 'bg-slate-100 dark:bg-slate-800',
       filterKey: 'Archived',
     },
+    {
+      label: `Portfolio Value (${currency})`,
+      value: stats.totalValue > 0 ? formatCurrency(stats.totalValue, currency) : `${currency === 'USD' ? '$0' : '₱0'}`,
+      icon: Banknote,
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bg: 'bg-emerald-50 dark:bg-emerald-950/50',
+      filterKey: 'ALL',
+    },
   ];
 
   return (
@@ -169,7 +185,7 @@ export default function Dashboard() {
             Dashboard
           </h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Centralized overview of your personal website projects and deployment status.
+            Centralized overview of your personal website projects, valuations, and deployment status.
           </p>
         </div>
 
@@ -197,7 +213,7 @@ export default function Dashboard() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {summaryCards.map((card) => {
           const Icon = card.icon;
           const isSelected = statusFilter === card.filterKey && card.filterKey !== 'ALL';
@@ -224,7 +240,7 @@ export default function Dashboard() {
                   <Icon className={`w-4 h-4 ${card.color}`} />
                 </div>
               </div>
-              <p className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
+              <p className="mt-3 text-xl font-bold text-slate-900 dark:text-white truncate">
                 {loading ? '—' : card.value}
               </p>
             </button>
@@ -241,7 +257,7 @@ export default function Dashboard() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search websites by name, description, or tech stack..."
+            placeholder="Search websites by name, description, FSD, or tech stack..."
             aria-label="Search websites"
             className="w-full pl-10 pr-3.5 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
@@ -382,6 +398,8 @@ export default function Dashboard() {
                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <th className="py-3.5 px-4">Website</th>
                   <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Price ({currency})</th>
+                  <th className="py-3.5 px-4">Top Languages</th>
                   <th className="py-3.5 px-4">Website URL</th>
                   <th className="py-3.5 px-4">Last Updated</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
@@ -390,6 +408,7 @@ export default function Dashboard() {
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                 {filteredWebsites.map((website) => {
                   const liveUrl = normalizeUrl(website.website_url);
+                  const langs = Array.isArray(website.languages) ? website.languages : [];
                   return (
                     <tr
                       key={website.id}
@@ -408,6 +427,31 @@ export default function Dashboard() {
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <StatusBadge status={website.status} />
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        {Number(website.price) > 0
+                          ? formatCurrency(website.price, currency)
+                          : '—'}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap text-xs">
+                        {langs.length > 0 ? (
+                          <div className="flex items-center gap-2">
+                            {langs.slice(0, 2).map((l) => (
+                              <span
+                                key={l.name}
+                                className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300"
+                              >
+                                <span
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: getLanguageColor(l.name) }}
+                                />
+                                {l.name} {l.percentage}%
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap text-xs">
                         {liveUrl ? (
@@ -493,4 +537,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
