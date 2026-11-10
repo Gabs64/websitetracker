@@ -397,9 +397,73 @@ function extractJsonObject(rawContent) {
 }
 
 /**
+ * Proportionally scales an existing valuation report's breakdown items so their
+ * sum matches a manually specified price in the given currency (with zero rounding drift).
+ */
+export function scaleValuationToManualPrice(valuation, manualPrice, currency = getPreferredCurrency()) {
+  const numPrice = Number(manualPrice);
+  if (!valuation || Number.isNaN(numPrice) || numPrice <= 0) return valuation;
+
+  const targetPHP =
+    currency === 'USD' ? Math.round(numPrice * PHP_TO_USD_RATE) : Math.round(numPrice);
+  const targetUSD =
+    currency === 'USD' ? Math.round(numPrice) : Math.round(numPrice / PHP_TO_USD_RATE);
+
+  const items = Array.isArray(valuation.breakdown) ? valuation.breakdown : [];
+  if (items.length === 0) {
+    return {
+      ...valuation,
+      recommendedPricePHP: targetPHP,
+      recommendedPriceUSD: targetUSD,
+    };
+  }
+
+  const currentTotalPHP =
+    items.reduce((sum, item) => sum + (Number(item.amountPHP) || 0), 0) ||
+    Number(valuation.recommendedPricePHP) ||
+    1;
+  const currentTotalUSD =
+    items.reduce((sum, item) => sum + (Number(item.amountUSD) || 0), 0) ||
+    Number(valuation.recommendedPriceUSD) ||
+    1;
+
+  let runningPHP = 0;
+  let runningUSD = 0;
+
+  const scaledBreakdown = items.map((item, idx) => {
+    const isLast = idx === items.length - 1;
+    const weightPHP = (Number(item.amountPHP) || 1) / currentTotalPHP;
+    const weightUSD = (Number(item.amountUSD) || 1) / currentTotalUSD;
+
+    const itemPHP = isLast
+      ? Math.max(0, targetPHP - runningPHP)
+      : Math.round(targetPHP * weightPHP);
+    const itemUSD = isLast
+      ? Math.max(0, targetUSD - runningUSD)
+      : Math.round(targetUSD * weightUSD);
+
+    runningPHP += itemPHP;
+    runningUSD += itemUSD;
+
+    return {
+      ...item,
+      amountPHP: itemPHP,
+      amountUSD: itemUSD,
+    };
+  });
+
+  return {
+    ...valuation,
+    recommendedPricePHP: targetPHP,
+    recommendedPriceUSD: targetUSD,
+    breakdown: scaledBreakdown,
+  };
+}
+
+/**
  * Calls Groq AI to classify the website project, determine its realistic market
- * price in PHP & USD, and generate an itemized valuation breakdown tailored to
- * the exact project scope. Automatically selects an accessible model for the key.
+ * price in PHP & USD (or allocate a manually entered targetPrice across FSD modules),
+ * and generate an itemized valuation breakdown tailored to the exact project scope.
  */
 export async function generateAiWebsiteValuation({
   name = '',
@@ -408,6 +472,8 @@ export async function generateAiWebsiteValuation({
   techStack = '',
   languages = [],
   repoMetrics = null,
+  targetPrice = 0,
+  currency = getPreferredCurrency(),
 }) {
   const groqKey = getGroqApiKey();
   if (!groqKey) {
@@ -419,9 +485,22 @@ export async function generateAiWebsiteValuation({
   const cleanFsd = String(fsdDetails || '').trim();
   if (!cleanFsd) {
     throw new Error(
-      'Website Details / Functional Specification Document (FSD) must be filled in first. The AI bases the price strictly on the FSD.'
+      'Website Details / Functional Specification Document (FSD) must be filled in first. The AI bases the price and breakdown strictly on the FSD.'
     );
   }
+
+  const manualAmount = Number(targetPrice);
+  const hasManualPrice = !Number.isNaN(manualAmount) && manualAmount > 0;
+  const manualPHP = hasManualPrice
+    ? currency === 'USD'
+      ? Math.round(manualAmount * PHP_TO_USD_RATE)
+      : Math.round(manualAmount)
+    : 0;
+  const manualUSD = hasManualPrice
+    ? currency === 'USD'
+      ? Math.round(manualAmount)
+      : Math.round(manualAmount / PHP_TO_USD_RATE)
+    : 0;
 
   const totalCodeBytes = (languages || []).reduce(
     (sum, l) => sum + Number(l.bytes || 0),
@@ -429,13 +508,11 @@ export async function generateAiWebsiteValuation({
   );
   const totalCodeKb = Math.round((totalCodeBytes / 1024) * 10) / 10;
 
-  const systemPrompt = `You are an expert software estimator and web development pricing specialist.
-Your job is to determine the creation price of a website STRICTLY AND PRIMARILY based on its Functional Specification Document (FSD) / Website Details provided by the user.
-
-HOW TO BASE THE PRICE ON THE FSD:
-1. Carefully read every section, functional requirement (e.g., FR-001, FR-002...), feature, page, database table, authentication/security requirement, and integration listed in the FSD.
-2. Break the valuation down directly by the actual functional modules / sections written in the FSD (3 to 6 breakdown items corresponding to the FSD's actual requirements).
-3. Price strictly according to the scope and complexity of the FSD:
+  const manualPriceInstruction = hasManualPrice
+    ? `IMPORTANT MANUAL PRICE OVERRIDE:
+The project owner has manually set the total website price to ₱${manualPHP} PHP ($${manualUSD} USD).
+You MUST set "recommendedPricePHP": ${manualPHP} and "recommendedPriceUSD": ${manualUSD}, and you MUST distribute this exact total price across the 3 to 6 FSD-based breakdown items according to the relative effort of each module in the FSD so that the breakdown items sum up to ₱${manualPHP} PHP ($${manualUSD} USD).`
+    : `Price strictly according to the scope and complexity of the FSD:
    - Small FSD (1-3 simple pages, static content, basic contact/info, no database or auth):
      ₱3,500 to ₱9,500 PHP ($65 to $170 USD) | 6 to 16 hours | Complexity: "Low"
    - Moderate FSD (Multi-page site, portfolio, blog, or basic interactive tool with 3-5 simple features):
@@ -443,7 +520,15 @@ HOW TO BASE THE PRICE ON THE FSD:
    - Standard Web App FSD (Single-role dashboard, CRUD management, authentication, search/filter, 1-2 database tables):
      ₱24,000 to ₱45,000 PHP ($430 to $800 USD) | 36 to 65 hours | Complexity: "Medium" or "High"
    - Comprehensive / Advanced FSD (Multi-role access, complex workflows, e-commerce/payments, AI integrations, 4+ database tables, extensive functional requirements):
-     ₱48,000 to ₱110,000+ PHP ($860 to $1,960+ USD) | 70 to 150+ hours | Complexity: "High" or "Enterprise"
+     ₱48,000 to ₱110,000+ PHP ($860 to $1,960+ USD) | 70 to 150+ hours | Complexity: "High" or "Enterprise"`;
+
+  const systemPrompt = `You are an expert software estimator and web development pricing specialist.
+Your job is to evaluate a website's Functional Specification Document (FSD) / Website Details and generate a module-by-module valuation breakdown based strictly on the FSD.
+
+HOW TO GENERATE THE FSD VALUATION & BREAKDOWN:
+1. Carefully read every section, functional requirement (e.g., FR-001, FR-002...), feature, page, database table, authentication/security requirement, and integration listed in the FSD.
+2. Break the valuation down directly by the actual functional modules / sections written in the FSD (3 to 6 breakdown items corresponding to the FSD's actual requirements).
+3. ${manualPriceInstruction}
 
 Ensure:
 - The sum of amountPHP across all breakdown items equals recommendedPricePHP (and amountUSD equals recommendedPriceUSD, using 1 USD ≈ 56 PHP).
@@ -546,7 +631,7 @@ Respond ONLY with a valid JSON object in this exact structure:
         sumUSD ||
         Math.round(recommendedPricePHP / PHP_TO_USD_RATE);
 
-      return {
+      const rawReport = {
         detectedCategory: String(parsed.detectedCategory || 'Custom Website'),
         complexityLevel: String(parsed.complexityLevel || 'Medium'),
         estimatedHours: Number(parsed.estimatedHours) || sumHours || 20,
@@ -557,6 +642,13 @@ Respond ONLY with a valid JSON object in this exact structure:
         aiModel: `Groq (${modelId})`,
         generatedAt: new Date().toISOString(),
       };
+
+      // If a manual targetPrice was specified, guarantee exact mathematical alignment across breakdown items
+      if (hasManualPrice) {
+        return scaleValuationToManualPrice(rawReport, manualAmount, currency);
+      }
+
+      return rawReport;
     } catch (err) {
       lastError = err?.message || lastError;
     }

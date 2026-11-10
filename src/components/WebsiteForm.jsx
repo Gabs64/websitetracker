@@ -22,6 +22,7 @@ import {
 import {
   analyzeGitHubRepository,
   generateAiWebsiteValuation,
+  scaleValuationToManualPrice,
   getPreferredCurrency,
   formatCurrency,
   getLanguageColor,
@@ -211,7 +212,19 @@ export default function WebsiteForm({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      // If user manually updates the price and a valuation breakdown already exists,
+      // automatically scale the breakdown items to match the manual total price
+      if (name === 'price' && prev.valuation && Number(value) > 0) {
+        next.valuation = scaleValuationToManualPrice(
+          prev.valuation,
+          Number(value),
+          currency
+        );
+      }
+      return next;
+    });
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -300,6 +313,8 @@ export default function WebsiteForm({
         }
       }
 
+      const manualPrice = Number(formData.price) > 0 ? Number(formData.price) : 0;
+
       const valuationReport = await generateAiWebsiteValuation({
         name: formData.name,
         description: formData.description,
@@ -307,11 +322,14 @@ export default function WebsiteForm({
         techStack: formData.tech_stack,
         languages: currentLanguages,
         repoMetrics: currentMetrics,
+        targetPrice: manualPrice,
         currency,
       });
 
-      const recommendedPrice =
-        currency === 'USD'
+      const finalPrice =
+        manualPrice > 0
+          ? manualPrice
+          : currency === 'USD'
           ? valuationReport.recommendedPriceUSD
           : valuationReport.recommendedPricePHP;
 
@@ -319,7 +337,7 @@ export default function WebsiteForm({
         ...prev,
         languages: currentLanguages,
         valuation: valuationReport,
-        price: String(recommendedPrice),
+        price: String(finalPrice),
       }));
     } catch (err) {
       setSubmitError(err?.message || 'Groq AI valuation failed.');
@@ -336,6 +354,38 @@ export default function WebsiteForm({
 
     const webUrlCheck = validateUrl(formData.website_url);
     const repoUrlCheck = validateUrl(formData.repository_url);
+    const numericPrice = formData.price !== '' ? Number(formData.price) : 0;
+
+    let finalValuation = formData.valuation || null;
+    let finalLanguages = formData.languages || [];
+
+    // If the user manually entered a price and hasn't generated a breakdown yet,
+    // auto-generate the FSD breakdown based on their manual total price before saving!
+    if (numericPrice > 0 && !finalValuation && formData.fsd_details.trim()) {
+      setEstimatingPrice(true);
+      try {
+        finalValuation = await generateAiWebsiteValuation({
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          fsdDetails: formData.fsd_details.trim(),
+          techStack: formatTechStack(formData.tech_stack),
+          languages: finalLanguages,
+          repoMetrics,
+          targetPrice: numericPrice,
+          currency,
+        });
+      } catch {
+        // If AI call fails during submit, still allow saving the manual price
+      } finally {
+        setEstimatingPrice(false);
+      }
+    } else if (numericPrice > 0 && finalValuation) {
+      finalValuation = scaleValuationToManualPrice(
+        finalValuation,
+        numericPrice,
+        currency
+      );
+    }
 
     const payload = {
       name: formData.name.trim(),
@@ -344,11 +394,11 @@ export default function WebsiteForm({
       repository_url: repoUrlCheck.value,
       tech_stack: formatTechStack(formData.tech_stack),
       status: formData.status,
-      price: formData.price !== '' ? Number(formData.price) : 0,
+      price: numericPrice,
       fsd_details: formData.fsd_details.trim(),
       notes: formData.notes.trim(),
-      languages: formData.languages || [],
-      valuation: formData.valuation || null,
+      languages: finalLanguages,
+      valuation: finalValuation,
     };
 
     const result = await onSubmit(payload);
@@ -718,6 +768,8 @@ export default function WebsiteForm({
                 <span>
                   {estimatingPrice
                     ? 'Groq AI Analyzing...'
+                    : Number(formData.price) > 0
+                    ? `Generate Breakdown for ${formatCurrency(formData.price, currency)}`
                     : 'Groq AI Auto-Detect Price'}
                 </span>
               </button>

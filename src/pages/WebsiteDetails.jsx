@@ -111,6 +111,8 @@ export default function WebsiteDetails() {
         }
       }
 
+      const existingManualPrice = Number(website.price) > 0 ? Number(website.price) : 0;
+
       const valuation = await generateAiWebsiteValuation({
         name: website.name,
         description: website.description,
@@ -118,11 +120,14 @@ export default function WebsiteDetails() {
         techStack: mergedTech,
         languages,
         repoMetrics: metrics,
+        targetPrice: existingManualPrice,
         currency,
       });
 
       const nextPrice =
-        currency === 'USD'
+        existingManualPrice > 0
+          ? existingManualPrice
+          : currency === 'USD'
           ? valuation.recommendedPriceUSD
           : valuation.recommendedPricePHP;
 
