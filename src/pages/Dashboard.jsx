@@ -24,6 +24,8 @@ import {
   GitBranch,
   Sparkles,
   Monitor,
+  Play,
+  Pause,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -55,10 +57,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Hero Spotlight Index for Deployed / Live Websites
+  // Hero Spotlight Index for Websites with Links
   const [spotlightIndex, setSpotlightIndex] = useState(0);
   const [showClearPreview, setShowClearPreview] = useState(false);
   const [bgScreenshotFallback, setBgScreenshotFallback] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(true);
+  const [isHeroHovered, setIsHeroHovered] = useState(false);
 
   // Quick Actions: Search, Filter, Layout
   const [searchQuery, setSearchQuery] = useState('');
@@ -107,6 +111,35 @@ export default function Dashboard() {
     }
     setBgScreenshotFallback(false);
   }, [liveWebsites.length, spotlightIndex]);
+
+  // Auto-Next rotation for Hero Section (every 7 seconds, pauses on hover or open modal)
+  useEffect(() => {
+    if (
+      !autoPlay ||
+      isHeroHovered ||
+      liveWebsites.length <= 1 ||
+      isFormOpen ||
+      Boolean(previewWebsite) ||
+      Boolean(deletingWebsite)
+    ) {
+      return undefined;
+    }
+
+    const timer = setInterval(() => {
+      setSpotlightIndex((prev) =>
+        prev === liveWebsites.length - 1 ? 0 : prev + 1
+      );
+    }, 7000);
+
+    return () => clearInterval(timer);
+  }, [
+    autoPlay,
+    isHeroHovered,
+    liveWebsites.length,
+    isFormOpen,
+    previewWebsite,
+    deletingWebsite,
+  ]);
 
   const activeSpotlight = liveWebsites[spotlightIndex] || null;
   const spotlightLiveUrl = normalizeUrl(activeSpotlight?.website_url);
@@ -255,7 +288,11 @@ export default function Dashboard() {
 
       {/* HERO SECTION: Live & Deployed Websites Showcase with Live Website Preview Background */}
       {!loading && (
-        <section className="relative overflow-hidden rounded-2xl bg-slate-950 text-white border border-indigo-500/30 shadow-xl animate-slide-up min-h-[340px]">
+        <section
+          onMouseEnter={() => setIsHeroHovered(true)}
+          onMouseLeave={() => setIsHeroHovered(false)}
+          className="relative overflow-hidden rounded-2xl bg-slate-950 text-white border border-indigo-500/30 shadow-xl animate-slide-up min-h-[340px]"
+        >
           {/* Live Website Preview Background Layer */}
           {spotlightLiveUrl ? (
             <div className="pointer-events-none absolute inset-0 overflow-hidden select-none">
@@ -351,6 +388,35 @@ export default function Dashboard() {
 
                 {liveWebsites.length > 1 && (
                   <div className="flex items-center gap-1.5 bg-slate-900/60 backdrop-blur-md px-1.5 py-1 rounded-lg border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setAutoPlay((prev) => !prev)}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
+                        autoPlay
+                          ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+                          : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                      }`}
+                      title={
+                        autoPlay
+                          ? 'Auto-Next is ON (pauses on hover) — click to pause'
+                          : 'Auto-Next is PAUSED — click to resume'
+                      }
+                      aria-label={autoPlay ? 'Pause auto-next' : 'Resume auto-next'}
+                    >
+                      {autoPlay ? (
+                        <>
+                          <Pause className="w-3 h-3" />
+                          <span className="hidden sm:inline">
+                            {isHeroHovered ? 'Paused' : 'Auto'}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3 h-3" />
+                          <span className="hidden sm:inline">Paused</span>
+                        </>
+                      )}
+                    </button>
                     <button
                       type="button"
                       onClick={() =>
