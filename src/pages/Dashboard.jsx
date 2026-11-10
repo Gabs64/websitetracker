@@ -96,9 +96,9 @@ export default function Dashboard() {
     loadWebsites();
   }, [loadWebsites]);
 
-  // All websites that are Deployed / Live
+  // All websites that have a Website URL (link) configured
   const liveWebsites = useMemo(() => {
-    return websites.filter((w) => w.status === 'Deployed / Live');
+    return websites.filter((w) => Boolean(normalizeUrl(w.website_url)));
   }, [websites]);
 
   useEffect(() => {
@@ -317,11 +317,13 @@ export default function Dashboard() {
               <div className="flex items-center gap-2.5">
                 <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 backdrop-blur-md">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span>LIVE PRODUCTION SHOWCASE</span>
+                  <span>WEBSITE PREVIEW SHOWCASE</span>
                 </span>
                 <span className="text-xs font-medium text-slate-200 bg-slate-900/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
                   {liveWebsites.length}{' '}
-                  {liveWebsites.length === 1 ? 'Website Live' : 'Websites Live'}
+                  {liveWebsites.length === 1
+                    ? 'Website with Link'
+                    : 'Websites with Links'}
                 </span>
               </div>
 
@@ -394,6 +396,7 @@ export default function Dashboard() {
                       <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-sm">
                         {activeSpotlight.name}
                       </h2>
+                      <StatusBadge status={activeSpotlight.status} />
                       {Number(activeSpotlight.price) > 0 && (
                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/25 text-emerald-200 border border-emerald-400/40 backdrop-blur-md">
                           <Banknote className="w-3.5 h-3.5" />
@@ -575,11 +578,11 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Strip of All Deployed / Live Websites */}
-                {liveWebsites.length > 1 && (
+                {/* Strip of All Websites with Website Links */}
+                {liveWebsites.length > 0 && (
                   <div className="pt-4 border-t border-white/15">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-300 mb-2.5">
-                      All Deployed / Live Websites ({liveWebsites.length})
+                      All Websites with Links ({liveWebsites.length})
                     </p>
                     <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
                       {liveWebsites.map((site, idx) => {
@@ -623,13 +626,12 @@ export default function Dashboard() {
               <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-semibold text-white">
-                    No Websites Marked as &ldquo;Deployed / Live&rdquo; Yet
+                    No Websites with a Website URL Yet
                   </h2>
                   <p className="text-xs text-slate-300 mt-1 max-w-xl">
-                    Once you set a project&apos;s status to{' '}
-                    <span className="text-emerald-300 font-medium">Deployed / Live</span>, it
-                    will automatically appear here in your live production showcase for 1-click
-                    access.
+                    Add a <span className="text-emerald-300 font-medium">Website URL</span> to any
+                    project and it will automatically appear here in your Hero Showcase with a live
+                    website preview background.
                   </p>
                 </div>
                 <button
@@ -638,7 +640,7 @@ export default function Dashboard() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer self-start sm:self-auto shrink-0"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Register Live Website</span>
+                  <span>Add Website with Link</span>
                 </button>
               </div>
             )}
