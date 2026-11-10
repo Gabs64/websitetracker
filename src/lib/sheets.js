@@ -13,7 +13,6 @@ export const configuredOwnerEmail = (
   .trim()
   .toLowerCase();
 
-const WEBAPP_URL_STORAGE_KEY = 'mwt_sheets_webapp_url';
 const SESSION_TOKEN_KEY = 'mwt_sheets_session_token';
 const SESSION_PROFILE_KEY = 'mwt_sheets_owner_profile';
 const META_START_TAG = '<!--MWT_META:';
@@ -36,24 +35,7 @@ export function getGoogleSheetsWebAppUrl() {
   ) {
     return envWebAppUrl;
   }
-  const storedUrl = localStorage.getItem(WEBAPP_URL_STORAGE_KEY)?.trim() || '';
-  if (
-    storedUrl &&
-    storedUrl.startsWith('https://') &&
-    !storedUrl.includes('YOUR_DEPLOYMENT_ID')
-  ) {
-    return storedUrl;
-  }
   return '';
-}
-
-export function setCustomGoogleSheetsWebAppUrl(url) {
-  const trimmed = String(url || '').trim();
-  if (!trimmed) {
-    localStorage.removeItem(WEBAPP_URL_STORAGE_KEY);
-    return;
-  }
-  localStorage.setItem(WEBAPP_URL_STORAGE_KEY, trimmed);
 }
 
 export function checkGoogleSheetsConfigured() {

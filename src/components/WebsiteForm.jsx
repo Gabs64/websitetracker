@@ -300,7 +300,7 @@ export default function WebsiteForm({
         type: 'success',
         text: getGroqApiKey()
           ? `Synced ${res.languages.length} language(s), tech stack, description, and Groq AI valuation from ${res.owner}/${res.repo}.`
-          : `Synced ${res.languages.length} language(s), tech stack, and description from ${res.owner}/${res.repo}. (Add GROQ_API_KEY in .env or Settings for AI pricing).`,
+          : `Synced ${res.languages.length} language(s), tech stack, and description from ${res.owner}/${res.repo}. (Set GROQ_API_KEY in .env or Vercel Environment Variables for AI pricing).`,
       });
     } finally {
       setAnalyzingRepo(false);

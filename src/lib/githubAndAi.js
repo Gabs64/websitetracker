@@ -7,7 +7,6 @@
  */
 
 const CURRENCY_STORAGE_KEY = 'mwt_currency';
-const GROQ_KEY_STORAGE_KEY = 'mwt_groq_api_key';
 
 // Language color map matching GitHub's official language colors
 export const LANGUAGE_COLORS = {
@@ -330,18 +329,8 @@ export function getGroqApiKey() {
   return (
     import.meta.env.GROQ_API_KEY?.trim() ||
     import.meta.env.VITE_GROQ_API_KEY?.trim() ||
-    localStorage.getItem(GROQ_KEY_STORAGE_KEY)?.trim() ||
     ''
   );
-}
-
-export function setCustomGroqApiKey(key) {
-  const trimmed = String(key || '').trim();
-  if (!trimmed) {
-    localStorage.removeItem(GROQ_KEY_STORAGE_KEY);
-  } else {
-    localStorage.setItem(GROQ_KEY_STORAGE_KEY, trimmed);
-  }
 }
 
 /**
@@ -360,7 +349,7 @@ export async function generateAiWebsiteValuation({
   const groqKey = getGroqApiKey();
   if (!groqKey) {
     throw new Error(
-      'Groq API Key is not configured. Add GROQ_API_KEY in your .env file (or paste it in Settings) to use Groq AI Price Auto-Detection.'
+      'GROQ_API_KEY is not configured in environment variables (.env or Vercel Environment Variables).'
     );
   }
 

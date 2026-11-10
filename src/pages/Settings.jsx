@@ -11,15 +11,12 @@ import {
   CheckCircle2,
   AlertCircle,
   Banknote,
-  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate } from '../components/WebsiteCard';
 import {
   getPreferredCurrency,
   setPreferredCurrency,
-  getGroqApiKey,
-  setCustomGroqApiKey,
 } from '../lib/githubAndAi';
 
 export function applyThemePreference(theme) {
@@ -49,8 +46,6 @@ export default function Settings() {
     return localStorage.getItem('mwt_default_view') || 'grid';
   });
   const [currency, setCurrency] = useState(() => getPreferredCurrency());
-  const [groqKey, setGroqKey] = useState(() => getGroqApiKey());
-  const [groqSaved, setGroqSaved] = useState(false);
 
   // Password Change State
   const [newPassword, setNewPassword] = useState('');
@@ -72,13 +67,6 @@ export default function Settings() {
   const handleCurrencyChange = (nextCurr) => {
     const saved = setPreferredCurrency(nextCurr);
     setCurrency(saved);
-  };
-
-  const handleSaveGroqKey = (e) => {
-    e.preventDefault();
-    setCustomGroqApiKey(groqKey);
-    setGroqSaved(true);
-    setTimeout(() => setGroqSaved(false), 2500);
   };
 
   const handlePasswordSubmit = async (e) => {
@@ -182,10 +170,10 @@ export default function Settings() {
           <Monitor className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
           <div>
             <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-              Application & Valuation Preferences
+              Application &amp; Valuation Preferences
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Customize currency, appearance, default view, and optional Gemini AI integration.
+              Customize currency, appearance, and default dashboard layout.
             </p>
           </div>
         </div>
@@ -282,36 +270,6 @@ export default function Settings() {
             })}
           </div>
         </div>
-
-        {/* Groq AI API Key for AI Price Estimator */}
-        <form onSubmit={handleSaveGroqKey} className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2 max-w-md">
-          <label
-            htmlFor="groq-api-key"
-            className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Groq AI API Key (`GROQ_API_KEY`)</span>
-          </label>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Used by Groq AI (Llama 3.3 70B) to analyze your website &amp; GitHub repo and generate accurate, project-specific pricing. You can also set <code className="font-mono">GROQ_API_KEY</code> in <code className="font-mono">.env</code> or Vercel.
-          </p>
-          <div className="flex items-center gap-2">
-            <input
-              id="groq-api-key"
-              type="password"
-              value={groqKey}
-              onChange={(e) => setGroqKey(e.target.value)}
-              placeholder="gsk_..."
-              className="flex-1 px-3.5 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <button
-              type="submit"
-              className="px-3.5 py-2 rounded-lg text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
-            >
-              {groqSaved ? 'Saved!' : 'Save Key'}
-            </button>
-          </div>
-        </form>
       </section>
 
       {/* 3. Update Owner Password */}
