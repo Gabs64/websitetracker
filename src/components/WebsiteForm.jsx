@@ -25,6 +25,7 @@ import {
   getPreferredCurrency,
   formatCurrency,
   getLanguageColor,
+  getGroqApiKey,
 } from '../lib/githubAndAi';
 
 export function DeleteConfirmModal({
@@ -246,21 +247,42 @@ export default function WebsiteForm({
         formData.fsd_details.trim() ||
         (res.readmeExcerpt ? `# Repository README Summary\n${res.readmeExcerpt}` : '');
 
-      // Also auto-run AI Valuation with the newly fetched repo data
-      const valuationReport = await generateAiWebsiteValuation({
-        name: nextName,
-        description: nextDesc,
-        fsdDetails: nextFsd,
-        techStack: mergedTech,
-        languages: res.languages,
-        repoMetrics: res.metrics,
-        currency,
-      });
+      let valuationReport = formData.valuation;
+      let nextPrice = formData.price;
 
-      const autoPrice =
-        currency === 'USD'
-          ? valuationReport.recommendedPriceUSD
-          : valuationReport.recommendedPricePHP;
+      if (getGroqApiKey()) {
+        try {
+          valuationReport = await generateAiWebsiteValuation({
+            name: nextName,
+            description: nextDesc,
+            fsdDetails: nextFsd,
+            techStack: mergedTech,
+            languages: res.languages,
+            repoMetrics: res.metrics,
+            currency,
+          });
+          const autoPrice =
+            currency === 'USD'
+              ? valuationReport.recommendedPriceUSD
+              : valuationReport.recommendedPricePHP;
+          nextPrice = String(autoPrice);
+        } catch (aiErr) {
+          setRepoMessage({
+            type: 'error',
+            text: `Synced GitHub repo (${res.languages.length} languages), but Groq AI failed: ${aiErr.message}`,
+          });
+          setFormData((prev) => ({
+            ...prev,
+            name: nextName,
+            description: nextDesc,
+            website_url: nextWebUrl,
+            tech_stack: mergedTech,
+            fsd_details: nextFsd,
+            languages: res.languages,
+          }));
+          return;
+        }
+      }
 
       setFormData((prev) => ({
         ...prev,
@@ -271,22 +293,25 @@ export default function WebsiteForm({
         fsd_details: nextFsd,
         languages: res.languages,
         valuation: valuationReport,
-        price: prev.price !== '' ? prev.price : String(autoPrice),
+        price: nextPrice,
       }));
 
       setRepoMessage({
         type: 'success',
-        text: `Synced ${res.languages.length} language(s), tech stack, description, and AI valuation from ${res.owner}/${res.repo}.`,
+        text: getGroqApiKey()
+          ? `Synced ${res.languages.length} language(s), tech stack, description, and Groq AI valuation from ${res.owner}/${res.repo}.`
+          : `Synced ${res.languages.length} language(s), tech stack, and description from ${res.owner}/${res.repo}. (Add GROQ_API_KEY in .env or Settings for AI pricing).`,
       });
     } finally {
       setAnalyzingRepo(false);
     }
   };
 
-  // AI Auto-Detect Website Category, Price & Breakdown from FSD/Details + Repo
+  // Groq AI Auto-Detect Website Category, Price & Breakdown from FSD/Details + Repo
   const handleAiAutoDetectPrice = async () => {
     setEstimatingPrice(true);
     setRepoMessage({ type: '', text: '' });
+    setSubmitError('');
     try {
       let currentLanguages = formData.languages;
       let currentMetrics = repoMetrics;
@@ -325,6 +350,8 @@ export default function WebsiteForm({
         valuation: valuationReport,
         price: String(recommendedPrice),
       }));
+    } catch (err) {
+      setSubmitError(err?.message || 'Groq AI valuation failed.');
     } finally {
       setEstimatingPrice(false);
     }
@@ -713,8 +740,8 @@ export default function WebsiteForm({
                 <Sparkles className={`w-3.5 h-3.5 ${estimatingPrice ? 'animate-spin' : ''}`} />
                 <span>
                   {estimatingPrice
-                    ? 'Calculating Valuation...'
-                    : 'AI Auto-Detect Price & Breakdown'}
+                    ? 'Groq AI Analyzing...'
+                    : 'Groq AI Auto-Detect Price'}
                 </span>
               </button>
             </div>

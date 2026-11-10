@@ -1,13 +1,13 @@
 /**
- * GitHub Repository Analyzer & Smart AI Website Price / Valuation Estimator
+ * GitHub Repository Analyzer & Groq AI Website Price / Valuation Estimator
  * Supports:
  * 1. Public GitHub Repository language percentages, tech stack detection, and description generation
- * 2. Built-in Smart AI Website Classifier & Valuation Engine (plus optional Gemini API enhancement)
+ * 2. Groq AI (`llama-3.3-70b-versatile`) Website Classifier & Valuation Engine
  * 3. Currency formatting in Philippine Peso (₱ PHP) and US Dollar ($ USD)
  */
 
 const CURRENCY_STORAGE_KEY = 'mwt_currency';
-const GEMINI_KEY_STORAGE_KEY = 'mwt_gemini_api_key';
+const GROQ_KEY_STORAGE_KEY = 'mwt_groq_api_key';
 
 // Language color map matching GitHub's official language colors
 export const LANGUAGE_COLORS = {
@@ -132,12 +132,11 @@ const KNOWN_PACKAGE_TECH = {
   stripe: 'Stripe',
   '@stripe/stripe-js': 'Stripe',
   openai: 'OpenAI API',
-  '@google/generative-ai': 'Gemini AI',
+  'groq-sdk': 'Groq AI',
   axios: 'Axios',
   '@tanstack/react-query': 'TanStack Query',
   redux: 'Redux',
   zustand: 'Zustand',
-  chart: 'Chart.js',
   'chart.js': 'Chart.js',
   recharts: 'Recharts',
   typescript: 'TypeScript',
@@ -152,17 +151,22 @@ export async function analyzeGitHubRepository(repoUrl) {
   if (!parsed) {
     return {
       ok: false,
-      error: 'Please enter a valid public GitHub repository URL (e.g., https://github.com/username/repo).',
+      error:
+        'Please enter a valid public GitHub repository URL (e.g., https://github.com/username/repo).',
     };
   }
 
   const { owner, repo } = parsed;
-  const baseApi = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  const baseApi = `https://api.github.com/repos/${encodeURIComponent(
+    owner
+  )}/${encodeURIComponent(repo)}`;
 
   try {
     const [repoRes, langRes] = await Promise.all([
       fetch(baseApi, { headers: { Accept: 'application/vnd.github.v3+json' } }),
-      fetch(`${baseApi}/languages`, { headers: { Accept: 'application/vnd.github.v3+json' } }),
+      fetch(`${baseApi}/languages`, {
+        headers: { Accept: 'application/vnd.github.v3+json' },
+      }),
     ]);
 
     if (repoRes.status === 404) {
@@ -183,7 +187,10 @@ export async function analyzeGitHubRepository(repoUrl) {
     const langData = langRes.ok ? await langRes.json() : {};
 
     // Compute language percentages
-    const totalBytes = Object.values(langData).reduce((sum, b) => sum + Number(b || 0), 0);
+    const totalBytes = Object.values(langData).reduce(
+      (sum, b) => sum + Number(b || 0),
+      0
+    );
     const languages = Object.entries(langData)
       .map(([name, bytes]) => {
         const rawPct = totalBytes > 0 ? (Number(bytes) / totalBytes) * 100 : 0;
@@ -195,12 +202,11 @@ export async function analyzeGitHubRepository(repoUrl) {
       })
       .sort((a, b) => b.bytes - a.bytes);
 
-    // Ensure rounding sums cleanly if non-empty
     if (languages.length > 0 && languages.every((l) => l.percentage === 0)) {
       languages[0].percentage = 100;
     }
 
-    // Attempt to inspect package.json and README in parallel (optional)
+    // Attempt to inspect package.json and README in parallel
     const [pkgRes, readmeRes] = await Promise.all([
       fetch(`${baseApi}/contents/package.json`, {
         headers: { Accept: 'application/vnd.github.v3+json' },
@@ -317,31 +323,31 @@ export async function analyzeGitHubRepository(repoUrl) {
 }
 
 // ============================================================================
-// SMART AI WEBSITE CLASSIFIER, PRICE AUTO-DETECTOR & VALUATION REPORT GENERATOR
+// GROQ AI WEBSITE CLASSIFIER, PRICE AUTO-DETECTOR & VALUATION REPORT GENERATOR
 // ============================================================================
 
-export function getGeminiApiKey() {
+export function getGroqApiKey() {
   return (
-    import.meta.env.GEMINI_API_KEY?.trim() ||
-    import.meta.env.VITE_GEMINI_API_KEY?.trim() ||
-    localStorage.getItem(GEMINI_KEY_STORAGE_KEY)?.trim() ||
+    import.meta.env.GROQ_API_KEY?.trim() ||
+    import.meta.env.VITE_GROQ_API_KEY?.trim() ||
+    localStorage.getItem(GROQ_KEY_STORAGE_KEY)?.trim() ||
     ''
   );
 }
 
-export function setCustomGeminiApiKey(key) {
+export function setCustomGroqApiKey(key) {
   const trimmed = String(key || '').trim();
   if (!trimmed) {
-    localStorage.removeItem(GEMINI_KEY_STORAGE_KEY);
+    localStorage.removeItem(GROQ_KEY_STORAGE_KEY);
   } else {
-    localStorage.setItem(GEMINI_KEY_STORAGE_KEY, trimmed);
+    localStorage.setItem(GROQ_KEY_STORAGE_KEY, trimmed);
   }
 }
 
 /**
- * Analyzes project name, description, FSD / project details, tech stack, and GitHub language
- * metrics to classify the website, estimate its market price, and generate a line-item
- * valuation report.
+ * Calls Groq AI (`llama-3.3-70b-versatile`) to classify the website project,
+ * determine its realistic market price in PHP & USD, and generate an itemized
+ * valuation breakdown tailored to the exact project scope.
  */
 export async function generateAiWebsiteValuation({
   name = '',
@@ -350,285 +356,140 @@ export async function generateAiWebsiteValuation({
   techStack = '',
   languages = [],
   repoMetrics = null,
-  currency = getPreferredCurrency(),
 }) {
-  // First compute the deterministic Smart Valuation Report
-  const baseReport = computeSmartHeuristicValuation({
-    name,
-    description,
-    fsdDetails,
-    techStack,
-    languages,
-    repoMetrics,
-    currency,
-  });
-
-  // If a Gemini API key is configured, optionally enrich the executive summary & price refinement
-  const geminiKey = getGeminiApiKey();
-  if (geminiKey) {
-    try {
-      const enriched = await refineWithGeminiApi(geminiKey, {
-        name,
-        description,
-        fsdDetails,
-        techStack,
-        languages,
-        baseReport,
-      });
-      if (enriched) {
-        return enriched;
-      }
-    } catch {
-      // Fall back gracefully to the built-in Smart AI Estimator
-    }
+  const groqKey = getGroqApiKey();
+  if (!groqKey) {
+    throw new Error(
+      'Groq API Key is not configured. Add GROQ_API_KEY in your .env file (or paste it in Settings) to use Groq AI Price Auto-Detection.'
+    );
   }
 
-  return baseReport;
-}
+  const totalCodeBytes = (languages || []).reduce(
+    (sum, l) => sum + Number(l.bytes || 0),
+    0
+  );
+  const totalCodeKb = Math.round((totalCodeBytes / 1024) * 10) / 10;
 
-function computeSmartHeuristicValuation({
-  name,
-  description,
-  fsdDetails,
-  techStack,
-  languages,
-}) {
-  const combinedText = `${name} ${description} ${fsdDetails} ${techStack}`.toLowerCase();
-  const fsdLength = (fsdDetails || '').trim().length;
+  const systemPrompt = `You are an expert software estimator and freelance/agency web development pricing specialist in the Philippines and international markets.
+Your job is to evaluate a website project based on its actual name, description, technology stack, GitHub repository language breakdown, codebase size (in KB of source code), and Functional Specification Document (FSD) / details.
 
-  // Count Functional Requirements if FSD contains FR-001, FR-002, etc.
-  const frMatches = (fsdDetails || '').match(/\bfr[-_\s]?\d+\b/gi) || [];
-  const uniqueFrCount = new Set(frMatches.map((m) => m.toUpperCase())).size;
+CRITICAL PRICING RULES — DO NOT give every project the same price! Differentiate sharply based on actual scope and codebase size:
+- Tier 1 (Simple Static Site / Basic HTML-CSS-JS / Mini Calculator / Single Landing Page / Small School Exercise, < 25 KB source code):
+  ₱3,000 to ₱9,500 PHP ($55 to $170 USD) | 6 to 16 hours | Complexity: "Low"
+- Tier 2 (Multi-page Portfolio / Brochure Website / Business Landing Site / Simple Blog / Basic React SPA without complex backend):
+  ₱10,000 to ₱22,000 PHP ($180 to $395 USD) | 18 to 35 hours | Complexity: "Low" or "Medium"
+- Tier 3 (Custom CRUD Web App / Management Dashboard / Tracker / Booking System / Authentication + Database):
+  ₱25,000 to ₱48,000 PHP ($445 to $855 USD) | 38 to 70 hours | Complexity: "Medium" or "High"
+- Tier 4 (Full-Stack E-Commerce / Multi-Role System / Payment Gateway / AI-Integrated Platform / Complex SaaS):
+  ₱50,000 to ₱110,000 PHP ($890 to $1,960 USD) | 75 to 150 hours | Complexity: "High" or "Enterprise"
 
-  // Detect project category
-  let detectedCategory = 'Custom Web Application';
-  let baseHours = 24;
+Ensure:
+1. Each breakdown item's amountPHP sums up to recommendedPricePHP (and amountUSD sums up to recommendedPriceUSD, using 1 USD ≈ 56 PHP).
+2. Each breakdown item is specific to THIS website's actual features and technologies (3 to 5 line items).
+3. Return ONLY valid JSON matching the exact schema requested.`;
 
-  if (
-    /e-commerce|ecommerce|shop|storefront|cart|checkout|stripe|payment|product catalog/i.test(
-      combinedText
-    )
-  ) {
-    detectedCategory = 'E-Commerce / Online Storefront';
-    baseHours = 48;
-  } else if (
-    /saas|subscription|multi-tenant|billing|workspace|organization/i.test(combinedText)
-  ) {
-    detectedCategory = 'SaaS Web Platform';
-    baseHours = 60;
-  } else if (
-    /ai|llm|openai|gemini|gpt|machine learning|chatbot|agent|autodetect/i.test(combinedText)
-  ) {
-    detectedCategory = 'AI-Powered Web Application';
-    baseHours = 45;
-  } else if (
-    /dashboard|tracker|admin|crm|erp|inventory|management|monitoring|analytics|portal/i.test(
-      combinedText
-    )
-  ) {
-    detectedCategory = 'Management Dashboard / Web Portal';
-    baseHours = 36;
-  } else if (
-    /portfolio|landing page|brochure|personal site|resume|blog|agency site/i.test(combinedText)
-  ) {
-    detectedCategory = 'Portfolio / Marketing Website';
-    baseHours = 16;
-  }
+  const userPrompt = `Evaluate this website project and provide a realistic, project-specific valuation:
 
-  const breakdown = [];
-  const hourlyRatePHP = 750; // Realistic skilled developer rate in PHP (~$13.40/hr equivalent)
-
-  // 1. Base Architecture, UI/UX & Responsive Layout
-  const uiHours = Math.round(baseHours * 0.45);
-  breakdown.push({
-    item: 'UI/UX Design & Responsive Frontend Architecture',
-    description: `Core interface, responsive layout, navigation, and component system for ${detectedCategory}`,
-    hours: uiHours,
-    amountPHP: uiHours * hourlyRatePHP,
-    amountUSD: Math.round((uiHours * hourlyRatePHP) / PHP_TO_USD_RATE),
-  });
-
-  // 2. Core Feature Implementation
-  const coreHours = Math.round(baseHours * 0.55);
-  breakdown.push({
-    item: 'Core Application Logic & Interactive Views',
-    description: 'Pages, forms, state management, search/filtering, and user workflows',
-    hours: coreHours,
-    amountPHP: coreHours * hourlyRatePHP,
-    amountUSD: Math.round((coreHours * hourlyRatePHP) / PHP_TO_USD_RATE),
-  });
-
-  // 3. Authentication & Security / Access Control
-  if (
-    /auth|login|password|session|rls|row level security|single-owner|role|permission|jwt|oauth/i.test(
-      combinedText
-    )
-  ) {
-    const authHours = 10;
-    breakdown.push({
-      item: 'Authentication & Access Control Security',
-      description: 'Protected routes, login/session verification, and security policies',
-      hours: authHours,
-      amountPHP: authHours * hourlyRatePHP,
-      amountUSD: Math.round((authHours * hourlyRatePHP) / PHP_TO_USD_RATE),
-    });
-  }
-
-  // 4. Database / Cloud Backend Integration
-  if (
-    /supabase|postgresql|postgres|mysql|mongodb|firebase|google sheets|prisma|database|crud|api/i.test(
-      combinedText
-    )
-  ) {
-    const dbHours = 14;
-    breakdown.push({
-      item: 'Database Schema & Backend API Integration',
-      description: 'Persistent cloud data storage, CRUD endpoints, and data validation',
-      hours: dbHours,
-      amountPHP: dbHours * hourlyRatePHP,
-      amountUSD: Math.round((dbHours * hourlyRatePHP) / PHP_TO_USD_RATE),
-    });
-  }
-
-  // 5. Special Integrations (AI, Payments, Charts, External APIs)
-  let integrationHours = 0;
-  const integrationNotes = [];
-  if (/ai|openai|gemini|llm|autodetect|smart/i.test(combinedText)) {
-    integrationHours += 12;
-    integrationNotes.push('AI/Smart estimation');
-  }
-  if (/stripe|paypal|paymongo|gcash|checkout|payment/i.test(combinedText)) {
-    integrationHours += 14;
-    integrationNotes.push('Payment gateway');
-  }
-  if (/chart|analytics|recharts|report|metric|statistics|summary card/i.test(combinedText)) {
-    integrationHours += 8;
-    integrationNotes.push('Analytics & reporting');
-  }
-  if (/github|webhook|rest api|graphql/i.test(combinedText)) {
-    integrationHours += 6;
-    integrationNotes.push('External API integration');
-  }
-
-  if (integrationHours > 0) {
-    breakdown.push({
-      item: 'Advanced Features & Third-Party Integrations',
-      description: integrationNotes.join(', '),
-      hours: integrationHours,
-      amountPHP: integrationHours * hourlyRatePHP,
-      amountUSD: Math.round((integrationHours * hourlyRatePHP) / PHP_TO_USD_RATE),
-    });
-  }
-
-  // 6. FSD Scope & Multi-Language Codebase Scale Adjustment
-  let scopeHours = 0;
-  if (uniqueFrCount >= 5) {
-    scopeHours += Math.min(uniqueFrCount * 2, 24);
-  } else if (fsdLength > 800) {
-    scopeHours += 10;
-  } else if (fsdLength > 300) {
-    scopeHours += 5;
-  }
-
-  const totalLangBytes = (languages || []).reduce((acc, l) => acc + (l.bytes || 0), 0);
-  if (totalLangBytes > 100000) {
-    scopeHours += 12;
-  } else if (totalLangBytes > 35000) {
-    scopeHours += 6;
-  }
-
-  if (scopeHours > 0) {
-    breakdown.push({
-      item: 'Specification Scope, QA Testing & Deployment',
-      description:
-        uniqueFrCount > 0
-          ? `Covers ${uniqueFrCount} documented functional requirements, responsive QA, and production deployment`
-          : 'Comprehensive specification requirements, cross-device QA, and production deployment',
-      hours: scopeHours,
-      amountPHP: scopeHours * hourlyRatePHP,
-      amountUSD: Math.round((scopeHours * hourlyRatePHP) / PHP_TO_USD_RATE),
-    });
-  }
-
-  const totalHours = breakdown.reduce((sum, item) => sum + item.hours, 0);
-  const rawPHP = breakdown.reduce((sum, item) => sum + item.amountPHP, 0);
-  // Round to nearest 500 PHP for clean pricing
-  const recommendedPricePHP = Math.round(rawPHP / 500) * 500;
-  const recommendedPriceUSD = Math.round((recommendedPricePHP / PHP_TO_USD_RATE) / 10) * 10;
-
-  let complexityLevel = 'Medium';
-  if (totalHours >= 80) complexityLevel = 'Enterprise';
-  else if (totalHours >= 50) complexityLevel = 'High';
-  else if (totalHours <= 24) complexityLevel = 'Low';
-
-  const topLangSummary =
+Website Name: ${name || 'Untitled Project'}
+Short Description: ${description || 'None provided'}
+Technology Stack: ${techStack || 'None specified'}
+GitHub Languages Breakdown: ${
     languages && languages.length > 0
-      ? ` Primary codebase languages: ${languages
-          .slice(0, 3)
-          .map((l) => `${l.name} (${l.percentage}%)`)
-          .join(', ')}.`
-      : '';
+      ? languages.map((l) => `${l.name}: ${l.percentage}% (${l.bytes} bytes)`).join(', ')
+      : 'Not analyzed'
+  }
+Total Source Code Volume: ${totalCodeKb > 0 ? `${totalCodeKb} KB` : 'Unknown'}
+Repository Metrics: ${repoMetrics ? JSON.stringify(repoMetrics) : 'Not available'}
+FSD / Detailed Specifications:
+${(fsdDetails || 'None provided').slice(0, 5000)}
 
-  const summary = `Classified as a ${complexityLevel}-complexity ${detectedCategory} requiring approximately ${totalHours} engineering hours.${topLangSummary} Estimated valuation includes UI/UX architecture, core functional modules, data persistence, and deployment.`;
-
-  return {
-    detectedCategory,
-    complexityLevel,
-    estimatedHours: totalHours,
-    recommendedPricePHP,
-    recommendedPriceUSD,
-    summary,
-    breakdown,
-    generatedAt: new Date().toISOString(),
-  };
-}
-
-async function refineWithGeminiApi(apiKey, { name, description, fsdDetails, techStack, languages, baseReport }) {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(
-    apiKey
-  )}`;
-
-  const prompt = `You are a web development valuation expert. Analyze this website project and return ONLY valid JSON matching the schema below.
-Website Name: ${name}
-Description: ${description}
-Tech Stack: ${techStack}
-GitHub Languages: ${JSON.stringify(languages)}
-FSD / Project Details:
-${(fsdDetails || '').slice(0, 4000)}
-
-Baseline Heuristic Estimate:
-Category: ${baseReport.detectedCategory}
-Estimated Hours: ${baseReport.estimatedHours}
-Recommended PHP: ${baseReport.recommendedPricePHP}
-Recommended USD: ${baseReport.recommendedPriceUSD}
-
-Return JSON with:
+Respond ONLY with a JSON object in this exact structure:
 {
-  "detectedCategory": "string",
+  "detectedCategory": "Specific category of this website (e.g., Static Landing Page, Interactive Portfolio, Management Dashboard, E-Commerce Store, AI Web App)",
   "complexityLevel": "Low | Medium | High | Enterprise",
-  "summary": "2-3 concise sentences explaining what the website is about and why it is valued at this price"
+  "estimatedHours": 24,
+  "recommendedPricePHP": 15000,
+  "recommendedPriceUSD": 270,
+  "summary": "2-3 sentences specifically explaining what this website does, its codebase/feature scope, and why it is priced at this exact tier.",
+  "breakdown": [
+    {
+      "item": "Specific Module or Phase Name",
+      "description": "What was built for this specific module",
+      "hours": 8,
+      "amountPHP": 5000,
+      "amountUSD": 90
+    }
+  ]
 }`;
 
-  const response = await fetch(endpoint, {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${groqKey}`,
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json' },
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.35,
+      response_format: { type: 'json_object' },
     }),
   });
 
-  if (!response.ok) return null;
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) return null;
+  if (!response.ok) {
+    let errText = `Groq API error (HTTP ${response.status})`;
+    try {
+      const errJson = await response.json();
+      if (errJson?.error?.message) {
+        errText = `Groq AI Error: ${errJson.error.message}`;
+      }
+    } catch {
+      // Ignore JSON parse error
+    }
+    throw new Error(errText);
+  }
 
-  const parsed = JSON.parse(text);
+  const data = await response.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('Groq AI returned an empty response.');
+  }
+
+  const parsed = JSON.parse(content);
+  const breakdown = Array.isArray(parsed.breakdown)
+    ? parsed.breakdown.map((row) => ({
+        item: String(row.item || 'Module'),
+        description: String(row.description || ''),
+        hours: Number(row.hours) || 4,
+        amountPHP: Number(row.amountPHP) || 0,
+        amountUSD:
+          Number(row.amountUSD) ||
+          Math.round((Number(row.amountPHP) || 0) / PHP_TO_USD_RATE),
+      }))
+    : [];
+
+  const sumPHP = breakdown.reduce((s, r) => s + r.amountPHP, 0);
+  const sumUSD = breakdown.reduce((s, r) => s + r.amountUSD, 0);
+  const sumHours = breakdown.reduce((s, r) => s + r.hours, 0);
+
+  const recommendedPricePHP = Number(parsed.recommendedPricePHP) || sumPHP || 10000;
+  const recommendedPriceUSD =
+    Number(parsed.recommendedPriceUSD) ||
+    sumUSD ||
+    Math.round(recommendedPricePHP / PHP_TO_USD_RATE);
+
   return {
-    ...baseReport,
-    detectedCategory: parsed.detectedCategory || baseReport.detectedCategory,
-    complexityLevel: parsed.complexityLevel || baseReport.complexityLevel,
-    summary: parsed.summary || baseReport.summary,
+    detectedCategory: String(parsed.detectedCategory || 'Custom Website'),
+    complexityLevel: String(parsed.complexityLevel || 'Medium'),
+    estimatedHours: Number(parsed.estimatedHours) || sumHours || 20,
+    recommendedPricePHP,
+    recommendedPriceUSD,
+    summary: String(parsed.summary || ''),
+    breakdown,
+    aiModel: 'Groq (Llama 3.3 70B)',
+    generatedAt: new Date().toISOString(),
   };
 }
-

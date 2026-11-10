@@ -49,6 +49,7 @@ export default function WebsiteDetails() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [syncingGithub, setSyncingGithub] = useState(false);
+  const [syncError, setSyncError] = useState('');
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -89,10 +90,11 @@ export default function WebsiteDetails() {
     }
   };
 
-  // One-click refresh of GitHub languages & AI valuation directly from Details view
+  // One-click refresh of GitHub languages & Groq AI valuation directly from Details view
   const handleSyncGitHubAndValuation = async () => {
     if (!user || !website) return;
     setSyncingGithub(true);
+    setSyncError('');
     try {
       let languages = Array.isArray(website.languages) ? website.languages : [];
       let metrics = null;
@@ -120,9 +122,7 @@ export default function WebsiteDetails() {
       });
 
       const nextPrice =
-        Number(website.price) > 0
-          ? Number(website.price)
-          : currency === 'USD'
+        currency === 'USD'
           ? valuation.recommendedPriceUSD
           : valuation.recommendedPricePHP;
 
@@ -137,6 +137,8 @@ export default function WebsiteDetails() {
       if (data) {
         setWebsite(data);
       }
+    } catch (err) {
+      setSyncError(err?.message || 'Failed to run Groq AI valuation.');
     } finally {
       setSyncingGithub(false);
     }
@@ -256,6 +258,13 @@ export default function WebsiteDetails() {
       </div>
 
       {/* Main Details Card */}
+      {syncError && (
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 flex items-center gap-3 text-xs text-rose-700 dark:text-rose-300">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{syncError}</span>
+        </div>
+      )}
+
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         {/* Header Section */}
         <div className="p-6 sm:p-8 border-b border-slate-200 dark:border-slate-800">

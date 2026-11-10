@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  envPrefix: ['VITE_', 'GOOGLE_SHEETS_', 'OWNER_', 'GEMINI_'],
+  envPrefix: ['VITE_', 'GOOGLE_SHEETS_', 'OWNER_', 'GROQ_'],
   build: {
     rollupOptions: {
       output: {

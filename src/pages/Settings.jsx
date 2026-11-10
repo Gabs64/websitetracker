@@ -18,8 +18,8 @@ import { formatDate } from '../components/WebsiteCard';
 import {
   getPreferredCurrency,
   setPreferredCurrency,
-  getGeminiApiKey,
-  setCustomGeminiApiKey,
+  getGroqApiKey,
+  setCustomGroqApiKey,
 } from '../lib/githubAndAi';
 
 export function applyThemePreference(theme) {
@@ -49,8 +49,8 @@ export default function Settings() {
     return localStorage.getItem('mwt_default_view') || 'grid';
   });
   const [currency, setCurrency] = useState(() => getPreferredCurrency());
-  const [geminiKey, setGeminiKey] = useState(() => getGeminiApiKey());
-  const [geminiSaved, setGeminiSaved] = useState(false);
+  const [groqKey, setGroqKey] = useState(() => getGroqApiKey());
+  const [groqSaved, setGroqSaved] = useState(false);
 
   // Password Change State
   const [newPassword, setNewPassword] = useState('');
@@ -74,11 +74,11 @@ export default function Settings() {
     setCurrency(saved);
   };
 
-  const handleSaveGeminiKey = (e) => {
+  const handleSaveGroqKey = (e) => {
     e.preventDefault();
-    setCustomGeminiApiKey(geminiKey);
-    setGeminiSaved(true);
-    setTimeout(() => setGeminiSaved(false), 2500);
+    setCustomGroqApiKey(groqKey);
+    setGroqSaved(true);
+    setTimeout(() => setGroqSaved(false), 2500);
   };
 
   const handlePasswordSubmit = async (e) => {
@@ -283,32 +283,32 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Optional Gemini API Key for AI Price Estimator */}
-        <form onSubmit={handleSaveGeminiKey} className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2 max-w-md">
+        {/* Groq AI API Key for AI Price Estimator */}
+        <form onSubmit={handleSaveGroqKey} className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2 max-w-md">
           <label
-            htmlFor="gemini-api-key"
+            htmlFor="groq-api-key"
             className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300"
           >
             <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Optional Gemini API Key</span>
-            <span className="text-[11px] font-normal text-slate-400">
-              (Built-in Smart AI Estimator works automatically without a key)
-            </span>
+            <span>Groq AI API Key (`GROQ_API_KEY`)</span>
           </label>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Used by Groq AI (Llama 3.3 70B) to analyze your website &amp; GitHub repo and generate accurate, project-specific pricing. You can also set <code className="font-mono">GROQ_API_KEY</code> in <code className="font-mono">.env</code> or Vercel.
+          </p>
           <div className="flex items-center gap-2">
             <input
-              id="gemini-api-key"
+              id="groq-api-key"
               type="password"
-              value={geminiKey}
-              onChange={(e) => setGeminiKey(e.target.value)}
-              placeholder="AIzaSy... (Optional)"
+              value={groqKey}
+              onChange={(e) => setGroqKey(e.target.value)}
+              placeholder="gsk_..."
               className="flex-1 px-3.5 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
               type="submit"
-              className="px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white cursor-pointer"
+              className="px-3.5 py-2 rounded-lg text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
             >
-              {geminiSaved ? 'Saved!' : 'Save Key'}
+              {groqSaved ? 'Saved!' : 'Save Key'}
             </button>
           </div>
         </form>
