@@ -333,8 +333,21 @@ export default function WebsiteForm({
           ? valuationReport.recommendedPriceUSD
           : valuationReport.recommendedPricePHP;
 
+      const existingTech = parseTechStack(formData.tech_stack);
+      const aiTech = Array.isArray(valuationReport.detectedTechStack)
+        ? valuationReport.detectedTechStack
+        : [];
+      const mergedTech = Array.from(new Set([...existingTech, ...aiTech])).join(', ');
+
       setFormData((prev) => ({
         ...prev,
+        name: prev.name.trim() || valuationReport.suggestedProjectName || prev.name,
+        description:
+          prev.description.trim() ||
+          valuationReport.suggestedDescription ||
+          valuationReport.summary ||
+          prev.description,
+        tech_stack: mergedTech || prev.tech_stack,
         languages: currentLanguages,
         valuation: valuationReport,
         price: String(finalPrice),

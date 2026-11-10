@@ -398,7 +398,8 @@ function extractJsonObject(rawContent) {
 
 /**
  * Proportionally scales an existing valuation report's breakdown items so their
- * sum matches a manually specified price in the given currency (with zero rounding drift).
+ * sum matches a manually specified price in the given currency (with clean rounding
+ * and proportional hours per module).
  */
 export function scaleValuationToManualPrice(valuation, manualPrice, currency = getPreferredCurrency()) {
   const numPrice = Number(manualPrice);
@@ -422,38 +423,52 @@ export function scaleValuationToManualPrice(valuation, manualPrice, currency = g
     items.reduce((sum, item) => sum + (Number(item.amountPHP) || 0), 0) ||
     Number(valuation.recommendedPricePHP) ||
     1;
-  const currentTotalUSD =
-    items.reduce((sum, item) => sum + (Number(item.amountUSD) || 0), 0) ||
-    Number(valuation.recommendedPriceUSD) ||
-    1;
+  const totalEstimatedHours =
+    Number(valuation.estimatedHours) ||
+    items.reduce((sum, item) => sum + (Number(item.hours) || 0), 0) ||
+    24;
 
   let runningPHP = 0;
   let runningUSD = 0;
+  let runningHours = 0;
 
   const scaledBreakdown = items.map((item, idx) => {
     const isLast = idx === items.length - 1;
-    const weightPHP = (Number(item.amountPHP) || 1) / currentTotalPHP;
-    const weightUSD = (Number(item.amountUSD) || 1) / currentTotalUSD;
+    const weight = (Number(item.amountPHP) || 1) / currentTotalPHP;
 
+    // Round intermediate PHP amounts to nearest 50 PHP for clean display
+    const rawItemPHP = targetPHP * weight;
     const itemPHP = isLast
       ? Math.max(0, targetPHP - runningPHP)
-      : Math.round(targetPHP * weightPHP);
+      : targetPHP >= 1000
+      ? Math.round(rawItemPHP / 50) * 50
+      : Math.round(rawItemPHP);
+
     const itemUSD = isLast
       ? Math.max(0, targetUSD - runningUSD)
-      : Math.round(targetUSD * weightUSD);
+      : Math.round(targetUSD * weight);
+
+    const itemHours = isLast
+      ? Math.max(1, totalEstimatedHours - runningHours)
+      : Math.max(1, Math.round(totalEstimatedHours * weight));
 
     runningPHP += itemPHP;
     runningUSD += itemUSD;
+    runningHours += itemHours;
 
     return {
       ...item,
+      hours: itemHours,
       amountPHP: itemPHP,
       amountUSD: itemUSD,
     };
   });
 
+  const finalHours = scaledBreakdown.reduce((sum, r) => sum + r.hours, 0);
+
   return {
     ...valuation,
+    estimatedHours: finalHours,
     recommendedPricePHP: targetPHP,
     recommendedPriceUSD: targetUSD,
     breakdown: scaledBreakdown,
@@ -532,7 +547,10 @@ HOW TO GENERATE THE FSD VALUATION & BREAKDOWN:
 
 Ensure:
 - The sum of amountPHP across all breakdown items equals recommendedPricePHP (and amountUSD equals recommendedPriceUSD, using 1 USD ≈ 56 PHP).
+- Each breakdown item's "hours" MUST be proportional to its "amountPHP" (do NOT give every module the exact same hours if their prices differ!), and the sum of "hours" across all breakdown items MUST equal "estimatedHours".
+- Use clean rounded numbers for amountPHP (e.g., multiples of 500 or 100 PHP).
 - Every breakdown item directly references the specific requirements from the FSD.
+- Also extract "suggestedProjectName", a concise 1-2 sentence "suggestedDescription" of the website from the FSD, and an array of "detectedTechStack" technologies mentioned in the FSD.
 - Return ONLY valid JSON matching the exact schema requested (no markdown fences).`;
 
   const userPrompt = `Analyze the following Functional Specification Document (FSD) / Website Details and calculate a precise, FSD-driven website creation price and breakdown:
@@ -552,19 +570,22 @@ ${cleanFsd.slice(0, 12000)}
 
 Respond ONLY with a valid JSON object in this exact structure:
 {
+  "suggestedProjectName": "Official Project Name from the FSD",
+  "suggestedDescription": "Concise 1-2 sentence description of what this website does based on the FSD",
+  "detectedTechStack": ["React", "Tailwind CSS"],
   "detectedCategory": "Specific website type based on the FSD",
   "complexityLevel": "Low | Medium | High | Enterprise",
-  "estimatedHours": 24,
-  "recommendedPricePHP": 15000,
-  "recommendedPriceUSD": 270,
+  "estimatedHours": 40,
+  "recommendedPricePHP": 25000,
+  "recommendedPriceUSD": 445,
   "summary": "2-3 sentences explaining the exact scope found in the FSD (number of modules, auth/DB/features) and why it justifies this price.",
   "breakdown": [
     {
       "item": "FSD Module / Requirement Group Name",
       "description": "Specific functional requirements from the FSD covered in this item",
-      "hours": 8,
-      "amountPHP": 5000,
-      "amountUSD": 90
+      "hours": 10,
+      "amountPHP": 6000,
+      "amountUSD": 107
     }
   ]
 }`;
@@ -632,6 +653,11 @@ Respond ONLY with a valid JSON object in this exact structure:
         Math.round(recommendedPricePHP / PHP_TO_USD_RATE);
 
       const rawReport = {
+        suggestedProjectName: String(parsed.suggestedProjectName || '').trim(),
+        suggestedDescription: String(parsed.suggestedDescription || '').trim(),
+        detectedTechStack: Array.isArray(parsed.detectedTechStack)
+          ? parsed.detectedTechStack.map((t) => String(t).trim()).filter(Boolean)
+          : [],
         detectedCategory: String(parsed.detectedCategory || 'Custom Website'),
         complexityLevel: String(parsed.complexityLevel || 'Medium'),
         estimatedHours: Number(parsed.estimatedHours) || sumHours || 20,

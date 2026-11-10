@@ -90,7 +90,7 @@ export default function WebsiteDetails() {
     }
   };
 
-  // One-click refresh of GitHub languages & Groq AI valuation directly from Details view
+  // One-click refresh of GitHub languages, project details & Groq AI valuation directly from Details view
   const handleSyncGitHubAndValuation = async () => {
     if (!user || !website) return;
     setSyncingGithub(true);
@@ -98,48 +98,71 @@ export default function WebsiteDetails() {
     try {
       let languages = Array.isArray(website.languages) ? website.languages : [];
       let metrics = null;
-      let mergedTech = website.tech_stack || '';
+      let mergedTechList = parseTechStack(website.tech_stack);
+      let nextWebsiteUrl = website.website_url || null;
+      let ghDescription = '';
 
       if (website.repository_url) {
         const ghRes = await analyzeGitHubRepository(website.repository_url);
         if (ghRes.ok) {
           languages = ghRes.languages;
           metrics = ghRes.metrics;
-          const existingTech = parseTechStack(website.tech_stack);
+          ghDescription = ghRes.suggestedDescription || '';
+          if (!nextWebsiteUrl && ghRes.suggestedHomepage) {
+            nextWebsiteUrl = ghRes.suggestedHomepage;
+          }
           const detectedTech = parseTechStack(ghRes.suggestedTechStack);
-          mergedTech = Array.from(new Set([...existingTech, ...detectedTech])).join(', ');
+          mergedTechList = Array.from(new Set([...mergedTechList, ...detectedTech]));
         }
       }
 
-      const existingManualPrice = Number(website.price) > 0 ? Number(website.price) : 0;
-
       const valuation = await generateAiWebsiteValuation({
         name: website.name,
-        description: website.description,
+        description: website.description || ghDescription,
         fsdDetails: website.fsd_details,
-        techStack: mergedTech,
+        techStack: mergedTechList.join(', '),
         languages,
         repoMetrics: metrics,
-        targetPrice: existingManualPrice,
         currency,
       });
 
+      if (Array.isArray(valuation.detectedTechStack) && valuation.detectedTechStack.length > 0) {
+        mergedTechList = Array.from(
+          new Set([...mergedTechList, ...valuation.detectedTechStack])
+        );
+      }
+
+      const nextName =
+        valuation.suggestedProjectName &&
+        (!website.name || website.name.toLowerCase() === 'untitled project')
+          ? valuation.suggestedProjectName
+          : website.name;
+
+      const nextDescription =
+        valuation.suggestedDescription ||
+        valuation.summary ||
+        ghDescription ||
+        website.description;
+
       const nextPrice =
-        existingManualPrice > 0
-          ? existingManualPrice
-          : currency === 'USD'
+        currency === 'USD'
           ? valuation.recommendedPriceUSD
           : valuation.recommendedPricePHP;
 
-      const { data } = await updateWebsite(website.id, user.id, {
+      const { data, error: updateErr } = await updateWebsite(website.id, user.id, {
         ...website,
-        tech_stack: mergedTech,
+        name: nextName,
+        description: nextDescription,
+        website_url: nextWebsiteUrl,
+        tech_stack: mergedTechList.join(', '),
         price: nextPrice,
         languages,
         valuation,
       });
 
-      if (data) {
+      if (updateErr) {
+        setSyncError(updateErr);
+      } else if (data) {
         setWebsite(data);
       }
     } catch (err) {
