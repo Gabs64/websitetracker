@@ -17,7 +17,7 @@
  *    - Who has access: "Anyone" (The script itself enforces strict token & password auth;
  *      your Google Sheet remains completely private in Google Drive).
  * 6. Copy the generated Web App URL (`https://script.google.com/macros/s/.../exec`)
- *    and set it as `VITE_GOOGLE_SHEETS_WEBAPP_URL` in your `.env` file.
+ *    and set it as `GOOGLE_SHEETS_WEBAPP_URL` in your `.env` file.
  */
 
 // Configure these two values before running `setupDatabaseAndOwner()`:

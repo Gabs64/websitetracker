@@ -120,8 +120,8 @@ cp .env.example .env
 Set your Google Sheets Web App URL (and optional frontend email guard):
 
 ```env
-VITE_GOOGLE_SHEETS_WEBAPP_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
-VITE_OWNER_EMAIL=your-email@example.com
+GOOGLE_SHEETS_WEBAPP_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+OWNER_EMAIL=your-email@example.com
 ```
 
 ---
@@ -148,6 +148,6 @@ VITE_OWNER_EMAIL=your-email@example.com
 1. Push this project to a private **GitHub** repository.
 2. Import the repository into [Vercel](https://vercel.com).
 3. Add the environment variables in **Vercel Project Settings → Environment Variables**:
-   - `VITE_GOOGLE_SHEETS_WEBAPP_URL`
-   - `VITE_OWNER_EMAIL`
+   - `GOOGLE_SHEETS_WEBAPP_URL`
+   - `OWNER_EMAIL`
 4. Click **Deploy**.

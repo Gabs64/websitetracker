@@ -1,6 +1,15 @@
-const envWebAppUrl = import.meta.env.VITE_GOOGLE_SHEETS_WEBAPP_URL?.trim() || '';
-export const configuredOwnerEmail =
-  import.meta.env.VITE_OWNER_EMAIL?.trim().toLowerCase() || '';
+const envWebAppUrl = (
+  import.meta.env.GOOGLE_SHEETS_WEBAPP_URL ||
+  import.meta.env.VITE_GOOGLE_SHEETS_WEBAPP_URL ||
+  ''
+).trim();
+export const configuredOwnerEmail = (
+  import.meta.env.OWNER_EMAIL ||
+  import.meta.env.VITE_OWNER_EMAIL ||
+  ''
+)
+  .trim()
+  .toLowerCase();
 
 const WEBAPP_URL_STORAGE_KEY = 'mwt_sheets_webapp_url';
 const SESSION_TOKEN_KEY = 'mwt_sheets_session_token';
@@ -90,7 +99,7 @@ export async function callSheetsApi(action, params = {}) {
     return {
       ok: false,
       error:
-        'Google Sheets Web App URL is not configured. Set VITE_GOOGLE_SHEETS_WEBAPP_URL in .env or connect your Web App URL on the login screen.',
+        'Google Sheets Web App URL is not configured. Set GOOGLE_SHEETS_WEBAPP_URL in .env or Vercel Environment Variables.',
     };
   }
 

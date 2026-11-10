@@ -72,7 +72,7 @@ export function AuthProvider({ children }) {
     setAuthError('');
     if (!isGoogleSheetsConfigured) {
       const msg =
-        'Google Sheets Web App URL is not configured. Check VITE_GOOGLE_SHEETS_WEBAPP_URL in your .env file.';
+        'Google Sheets Web App URL is not configured. Check GOOGLE_SHEETS_WEBAPP_URL in your .env file.';
       setAuthError(msg);
       return { error: msg };
     }

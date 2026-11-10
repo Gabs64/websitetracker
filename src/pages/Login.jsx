@@ -54,7 +54,7 @@ export default function Login() {
               Deploy <code className="font-mono bg-amber-100 dark:bg-amber-900/60 px-1 py-0.5 rounded">google-sheets/Code.gs</code> inside your private Google Sheet&apos;s Apps Script editor, then copy{' '}
               <code className="font-mono bg-amber-100 dark:bg-amber-900/60 px-1 py-0.5 rounded">.env.example</code> to{' '}
               <code className="font-mono bg-amber-100 dark:bg-amber-900/60 px-1 py-0.5 rounded">.env</code> and set{' '}
-              <code className="font-mono">VITE_GOOGLE_SHEETS_WEBAPP_URL</code>.
+              <code className="font-mono">GOOGLE_SHEETS_WEBAPP_URL</code>.
             </p>
           </div>
         )}
