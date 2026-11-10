@@ -2,7 +2,7 @@
  * GitHub Repository Analyzer & Groq AI Website Price / Valuation Estimator
  * Supports:
  * 1. Public GitHub Repository language percentages, tech stack detection, and description generation
- * 2. Groq AI (`llama-3.3-70b-versatile`) Website Classifier & Valuation Engine
+ * 2. Groq AI Dynamic Model Discovery & Website Valuation Engine
  * 3. Currency formatting in Philippine Peso (₱ PHP) and US Dollar ($ USD)
  */
 
@@ -333,10 +333,73 @@ export function getGroqApiKey() {
   );
 }
 
+const PREFERRED_GROQ_MODELS = [
+  'openai/gpt-oss-120b',
+  'meta-llama/llama-4-maverick-17b-128e-instruct',
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'qwen/qwen3-32b',
+  'openai/gpt-oss-20b',
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'gemma2-9b-it',
+  'mixtral-8x7b-32768',
+];
+
 /**
- * Calls Groq AI (`llama-3.3-70b-versatile`) to classify the website project,
- * determine its realistic market price in PHP & USD, and generate an itemized
- * valuation breakdown tailored to the exact project scope.
+ * Queries Groq's `/openai/v1/models` endpoint to find the active chat models
+ * that the user's API key has permission to use.
+ */
+async function getAvailableGroqModels(groqKey) {
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: {
+        Authorization: `Bearer ${groqKey}`,
+      },
+    });
+    if (!res.ok) return PREFERRED_GROQ_MODELS;
+
+    const json = await res.json();
+    const allIds = (json?.data || [])
+      .map((m) => m.id)
+      .filter(
+        (id) =>
+          id &&
+          !/whisper|guard|tts|playai|embed|orpheus|allam|moderation/i.test(id)
+      );
+
+    if (allIds.length === 0) return PREFERRED_GROQ_MODELS;
+
+    // Rank preferred models that exist in allIds first, then append any remaining chat models
+    const ranked = [
+      ...PREFERRED_GROQ_MODELS.filter((m) => allIds.includes(m)),
+      ...allIds.filter((id) => !PREFERRED_GROQ_MODELS.includes(id)),
+    ];
+    return ranked;
+  } catch {
+    return PREFERRED_GROQ_MODELS;
+  }
+}
+
+function extractJsonObject(rawContent) {
+  if (!rawContent) return null;
+  const trimmed = String(rawContent).trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // Strip <think>...</think> blocks if present (e.g., reasoning models like Qwen / DeepSeek)
+    const withoutThink = trimmed.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    const match = withoutThink.match(/\{[\s\S]*\}/);
+    if (match) {
+      return JSON.parse(match[0]);
+    }
+    throw new Error('Could not parse JSON from AI response.');
+  }
+}
+
+/**
+ * Calls Groq AI to classify the website project, determine its realistic market
+ * price in PHP & USD, and generate an itemized valuation breakdown tailored to
+ * the exact project scope. Automatically selects an accessible model for the key.
  */
 export async function generateAiWebsiteValuation({
   name = '',
@@ -375,7 +438,7 @@ CRITICAL PRICING RULES — DO NOT give every project the same price! Differentia
 Ensure:
 1. Each breakdown item's amountPHP sums up to recommendedPricePHP (and amountUSD sums up to recommendedPriceUSD, using 1 USD ≈ 56 PHP).
 2. Each breakdown item is specific to THIS website's actual features and technologies (3 to 5 line items).
-3. Return ONLY valid JSON matching the exact schema requested.`;
+3. Return ONLY valid JSON matching the exact schema requested (no markdown fences).`;
 
   const userPrompt = `Evaluate this website project and provide a realistic, project-specific valuation:
 
@@ -392,7 +455,7 @@ Repository Metrics: ${repoMetrics ? JSON.stringify(repoMetrics) : 'Not available
 FSD / Detailed Specifications:
 ${(fsdDetails || 'None provided').slice(0, 5000)}
 
-Respond ONLY with a JSON object in this exact structure:
+Respond ONLY with a valid JSON object in this exact structure:
 {
   "detectedCategory": "Specific category of this website (e.g., Static Landing Page, Interactive Portfolio, Management Dashboard, E-Commerce Store, AI Web App)",
   "complexityLevel": "Low | Medium | High | Enterprise",
@@ -411,74 +474,83 @@ Respond ONLY with a JSON object in this exact structure:
   ]
 }`;
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${groqKey}`,
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.35,
-      response_format: { type: 'json_object' },
-    }),
-  });
+  const candidateModels = await getAvailableGroqModels(groqKey);
+  let lastError = 'No accessible Groq AI chat models found for your API key.';
 
-  if (!response.ok) {
-    let errText = `Groq API error (HTTP ${response.status})`;
+  for (const modelId of candidateModels.slice(0, 6)) {
     try {
-      const errJson = await response.json();
-      if (errJson?.error?.message) {
-        errText = `Groq AI Error: ${errJson.error.message}`;
+      const response = await fetch(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${groqKey}`,
+          },
+          body: JSON.stringify({
+            model: modelId,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            temperature: 0.35,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => null);
+        lastError =
+          errJson?.error?.message || `Groq API HTTP ${response.status} on ${modelId}`;
+        continue;
       }
-    } catch {
-      // Ignore JSON parse error
+
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content;
+      const parsed = extractJsonObject(content);
+      if (!parsed) {
+        lastError = `Empty JSON response from ${modelId}`;
+        continue;
+      }
+
+      const breakdown = Array.isArray(parsed.breakdown)
+        ? parsed.breakdown.map((row) => ({
+            item: String(row.item || 'Module'),
+            description: String(row.description || ''),
+            hours: Number(row.hours) || 4,
+            amountPHP: Number(row.amountPHP) || 0,
+            amountUSD:
+              Number(row.amountUSD) ||
+              Math.round((Number(row.amountPHP) || 0) / PHP_TO_USD_RATE),
+          }))
+        : [];
+
+      const sumPHP = breakdown.reduce((s, r) => s + r.amountPHP, 0);
+      const sumUSD = breakdown.reduce((s, r) => s + r.amountUSD, 0);
+      const sumHours = breakdown.reduce((s, r) => s + r.hours, 0);
+
+      const recommendedPricePHP =
+        Number(parsed.recommendedPricePHP) || sumPHP || 10000;
+      const recommendedPriceUSD =
+        Number(parsed.recommendedPriceUSD) ||
+        sumUSD ||
+        Math.round(recommendedPricePHP / PHP_TO_USD_RATE);
+
+      return {
+        detectedCategory: String(parsed.detectedCategory || 'Custom Website'),
+        complexityLevel: String(parsed.complexityLevel || 'Medium'),
+        estimatedHours: Number(parsed.estimatedHours) || sumHours || 20,
+        recommendedPricePHP,
+        recommendedPriceUSD,
+        summary: String(parsed.summary || ''),
+        breakdown,
+        aiModel: `Groq (${modelId})`,
+        generatedAt: new Date().toISOString(),
+      };
+    } catch (err) {
+      lastError = err?.message || lastError;
     }
-    throw new Error(errText);
   }
 
-  const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('Groq AI returned an empty response.');
-  }
-
-  const parsed = JSON.parse(content);
-  const breakdown = Array.isArray(parsed.breakdown)
-    ? parsed.breakdown.map((row) => ({
-        item: String(row.item || 'Module'),
-        description: String(row.description || ''),
-        hours: Number(row.hours) || 4,
-        amountPHP: Number(row.amountPHP) || 0,
-        amountUSD:
-          Number(row.amountUSD) ||
-          Math.round((Number(row.amountPHP) || 0) / PHP_TO_USD_RATE),
-      }))
-    : [];
-
-  const sumPHP = breakdown.reduce((s, r) => s + r.amountPHP, 0);
-  const sumUSD = breakdown.reduce((s, r) => s + r.amountUSD, 0);
-  const sumHours = breakdown.reduce((s, r) => s + r.hours, 0);
-
-  const recommendedPricePHP = Number(parsed.recommendedPricePHP) || sumPHP || 10000;
-  const recommendedPriceUSD =
-    Number(parsed.recommendedPriceUSD) ||
-    sumUSD ||
-    Math.round(recommendedPricePHP / PHP_TO_USD_RATE);
-
-  return {
-    detectedCategory: String(parsed.detectedCategory || 'Custom Website'),
-    complexityLevel: String(parsed.complexityLevel || 'Medium'),
-    estimatedHours: Number(parsed.estimatedHours) || sumHours || 20,
-    recommendedPricePHP,
-    recommendedPriceUSD,
-    summary: String(parsed.summary || ''),
-    breakdown,
-    aiModel: 'Groq (Llama 3.3 70B)',
-    generatedAt: new Date().toISOString(),
-  };
+  throw new Error(`Groq AI Error: ${lastError}`);
 }
