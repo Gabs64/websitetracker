@@ -416,57 +416,67 @@ export async function generateAiWebsiteValuation({
     );
   }
 
+  const cleanFsd = String(fsdDetails || '').trim();
+  if (!cleanFsd) {
+    throw new Error(
+      'Website Details / Functional Specification Document (FSD) must be filled in first. The AI bases the price strictly on the FSD.'
+    );
+  }
+
   const totalCodeBytes = (languages || []).reduce(
     (sum, l) => sum + Number(l.bytes || 0),
     0
   );
   const totalCodeKb = Math.round((totalCodeBytes / 1024) * 10) / 10;
 
-  const systemPrompt = `You are an expert software estimator and freelance/agency web development pricing specialist in the Philippines and international markets.
-Your job is to evaluate a website project based on its actual name, description, technology stack, GitHub repository language breakdown, codebase size (in KB of source code), and Functional Specification Document (FSD) / details.
+  const systemPrompt = `You are an expert software estimator and web development pricing specialist.
+Your job is to determine the creation price of a website STRICTLY AND PRIMARILY based on its Functional Specification Document (FSD) / Website Details provided by the user.
 
-CRITICAL PRICING RULES — DO NOT give every project the same price! Differentiate sharply based on actual scope and codebase size:
-- Tier 1 (Simple Static Site / Basic HTML-CSS-JS / Mini Calculator / Single Landing Page / Small School Exercise, < 25 KB source code):
-  ₱3,000 to ₱9,500 PHP ($55 to $170 USD) | 6 to 16 hours | Complexity: "Low"
-- Tier 2 (Multi-page Portfolio / Brochure Website / Business Landing Site / Simple Blog / Basic React SPA without complex backend):
-  ₱10,000 to ₱22,000 PHP ($180 to $395 USD) | 18 to 35 hours | Complexity: "Low" or "Medium"
-- Tier 3 (Custom CRUD Web App / Management Dashboard / Tracker / Booking System / Authentication + Database):
-  ₱25,000 to ₱48,000 PHP ($445 to $855 USD) | 38 to 70 hours | Complexity: "Medium" or "High"
-- Tier 4 (Full-Stack E-Commerce / Multi-Role System / Payment Gateway / AI-Integrated Platform / Complex SaaS):
-  ₱50,000 to ₱110,000 PHP ($890 to $1,960 USD) | 75 to 150 hours | Complexity: "High" or "Enterprise"
+HOW TO BASE THE PRICE ON THE FSD:
+1. Carefully read every section, functional requirement (e.g., FR-001, FR-002...), feature, page, database table, authentication/security requirement, and integration listed in the FSD.
+2. Break the valuation down directly by the actual functional modules / sections written in the FSD (3 to 6 breakdown items corresponding to the FSD's actual requirements).
+3. Price strictly according to the scope and complexity of the FSD:
+   - Small FSD (1-3 simple pages, static content, basic contact/info, no database or auth):
+     ₱3,500 to ₱9,500 PHP ($65 to $170 USD) | 6 to 16 hours | Complexity: "Low"
+   - Moderate FSD (Multi-page site, portfolio, blog, or basic interactive tool with 3-5 simple features):
+     ₱10,000 to ₱22,000 PHP ($180 to $395 USD) | 18 to 35 hours | Complexity: "Low" or "Medium"
+   - Standard Web App FSD (Single-role dashboard, CRUD management, authentication, search/filter, 1-2 database tables):
+     ₱24,000 to ₱45,000 PHP ($430 to $800 USD) | 36 to 65 hours | Complexity: "Medium" or "High"
+   - Comprehensive / Advanced FSD (Multi-role access, complex workflows, e-commerce/payments, AI integrations, 4+ database tables, extensive functional requirements):
+     ₱48,000 to ₱110,000+ PHP ($860 to $1,960+ USD) | 70 to 150+ hours | Complexity: "High" or "Enterprise"
 
 Ensure:
-1. Each breakdown item's amountPHP sums up to recommendedPricePHP (and amountUSD sums up to recommendedPriceUSD, using 1 USD ≈ 56 PHP).
-2. Each breakdown item is specific to THIS website's actual features and technologies (3 to 5 line items).
-3. Return ONLY valid JSON matching the exact schema requested (no markdown fences).`;
+- The sum of amountPHP across all breakdown items equals recommendedPricePHP (and amountUSD equals recommendedPriceUSD, using 1 USD ≈ 56 PHP).
+- Every breakdown item directly references the specific requirements from the FSD.
+- Return ONLY valid JSON matching the exact schema requested (no markdown fences).`;
 
-  const userPrompt = `Evaluate this website project and provide a realistic, project-specific valuation:
+  const userPrompt = `Analyze the following Functional Specification Document (FSD) / Website Details and calculate a precise, FSD-driven website creation price and breakdown:
 
 Website Name: ${name || 'Untitled Project'}
 Short Description: ${description || 'None provided'}
 Technology Stack: ${techStack || 'None specified'}
-GitHub Languages Breakdown: ${
+GitHub Languages (supporting context): ${
     languages && languages.length > 0
-      ? languages.map((l) => `${l.name}: ${l.percentage}% (${l.bytes} bytes)`).join(', ')
+      ? languages.map((l) => `${l.name}: ${l.percentage}%`).join(', ')
       : 'Not analyzed'
-  }
-Total Source Code Volume: ${totalCodeKb > 0 ? `${totalCodeKb} KB` : 'Unknown'}
-Repository Metrics: ${repoMetrics ? JSON.stringify(repoMetrics) : 'Not available'}
-FSD / Detailed Specifications:
-${(fsdDetails || 'None provided').slice(0, 5000)}
+  } (${totalCodeKb > 0 ? `${totalCodeKb} KB` : 'N/A'})
+
+=== FUNCTIONAL SPECIFICATION DOCUMENT (FSD) / WEBSITE DETAILS (PRIMARY PRICING BASIS) ===
+${cleanFsd.slice(0, 12000)}
+=========================================================================================
 
 Respond ONLY with a valid JSON object in this exact structure:
 {
-  "detectedCategory": "Specific category of this website (e.g., Static Landing Page, Interactive Portfolio, Management Dashboard, E-Commerce Store, AI Web App)",
+  "detectedCategory": "Specific website type based on the FSD",
   "complexityLevel": "Low | Medium | High | Enterprise",
   "estimatedHours": 24,
   "recommendedPricePHP": 15000,
   "recommendedPriceUSD": 270,
-  "summary": "2-3 sentences specifically explaining what this website does, its codebase/feature scope, and why it is priced at this exact tier.",
+  "summary": "2-3 sentences explaining the exact scope found in the FSD (number of modules, auth/DB/features) and why it justifies this price.",
   "breakdown": [
     {
-      "item": "Specific Module or Phase Name",
-      "description": "What was built for this specific module",
+      "item": "FSD Module / Requirement Group Name",
+      "description": "Specific functional requirements from the FSD covered in this item",
       "hours": 8,
       "amountPHP": 5000,
       "amountUSD": 90

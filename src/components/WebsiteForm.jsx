@@ -25,7 +25,6 @@ import {
   getPreferredCurrency,
   formatCurrency,
   getLanguageColor,
-  getGroqApiKey,
 } from '../lib/githubAndAi';
 
 export function DeleteConfirmModal({
@@ -183,6 +182,11 @@ export default function WebsiteForm({
         'Please specify at least one technology (e.g., React, Tailwind CSS).';
     }
 
+    if (!formData.fsd_details.trim()) {
+      nextErrors.fsd_details =
+        'Website Details / Functional Specification Document (FSD) is required.';
+    }
+
     if (!WEBSITE_STATUSES.includes(formData.status)) {
       nextErrors.status = 'Please select a valid development status.';
     }
@@ -243,75 +247,42 @@ export default function WebsiteForm({
       const detectedTech = parseTechStack(res.suggestedTechStack);
       const mergedTech = Array.from(new Set([...existingTech, ...detectedTech])).join(', ');
 
-      const nextFsd =
-        formData.fsd_details.trim() ||
-        (res.readmeExcerpt ? `# Repository README Summary\n${res.readmeExcerpt}` : '');
-
-      let valuationReport = formData.valuation;
-      let nextPrice = formData.price;
-
-      if (getGroqApiKey()) {
-        try {
-          valuationReport = await generateAiWebsiteValuation({
-            name: nextName,
-            description: nextDesc,
-            fsdDetails: nextFsd,
-            techStack: mergedTech,
-            languages: res.languages,
-            repoMetrics: res.metrics,
-            currency,
-          });
-          const autoPrice =
-            currency === 'USD'
-              ? valuationReport.recommendedPriceUSD
-              : valuationReport.recommendedPricePHP;
-          nextPrice = String(autoPrice);
-        } catch (aiErr) {
-          setRepoMessage({
-            type: 'error',
-            text: `Synced GitHub repo (${res.languages.length} languages), but Groq AI failed: ${aiErr.message}`,
-          });
-          setFormData((prev) => ({
-            ...prev,
-            name: nextName,
-            description: nextDesc,
-            website_url: nextWebUrl,
-            tech_stack: mergedTech,
-            fsd_details: nextFsd,
-            languages: res.languages,
-          }));
-          return;
-        }
-      }
-
       setFormData((prev) => ({
         ...prev,
         name: nextName,
         description: nextDesc,
         website_url: nextWebUrl,
         tech_stack: mergedTech,
-        fsd_details: nextFsd,
         languages: res.languages,
-        valuation: valuationReport,
-        price: nextPrice,
       }));
 
       setRepoMessage({
         type: 'success',
-        text: getGroqApiKey()
-          ? `Synced ${res.languages.length} language(s), tech stack, description, and Groq AI valuation from ${res.owner}/${res.repo}.`
-          : `Synced ${res.languages.length} language(s), tech stack, and description from ${res.owner}/${res.repo}. (Set GROQ_API_KEY in .env or Vercel Environment Variables for AI pricing).`,
+        text: `Synced ${res.languages.length} language(s), tech stack, and description from ${res.owner}/${res.repo}. Fill in the FSD below and click "Groq AI Auto-Detect Price" to calculate pricing from your FSD.`,
       });
     } finally {
       setAnalyzingRepo(false);
     }
   };
 
-  // Groq AI Auto-Detect Website Category, Price & Breakdown from FSD/Details + Repo
+  // Groq AI Auto-Detect Website Category, Price & Breakdown strictly from FSD/Details
   const handleAiAutoDetectPrice = async () => {
-    setEstimatingPrice(true);
     setRepoMessage({ type: '', text: '' });
     setSubmitError('');
+
+    if (!formData.fsd_details.trim()) {
+      setErrors((prev) => ({
+        ...prev,
+        fsd_details:
+          'Please fill in the Website Details / FSD first so Groq AI can base the price on it.',
+      }));
+      setSubmitError(
+        'Website Details / Functional Specification Document (FSD) must be filled in before running Groq AI Price Auto-Detection.'
+      );
+      return;
+    }
+
+    setEstimatingPrice(true);
     try {
       let currentLanguages = formData.languages;
       let currentMetrics = repoMetrics;
@@ -678,20 +649,26 @@ export default function WebsiteForm({
               <span className="flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Website Details / Functional Specification Document (FSD)</span>
+                <span className="text-rose-500">*</span>
               </span>
-              <span className="text-[11px] font-normal text-slate-400">
-                Used by AI Price Auto-Detector
+              <span className="text-[11px] font-normal text-indigo-600 dark:text-indigo-400">
+                Required — Primary basis for Groq AI Price Auto-Detector
               </span>
             </label>
             <textarea
               id="fsd-details"
               name="fsd_details"
-              rows={4}
+              rows={5}
               value={formData.fsd_details}
               onChange={handleChange}
-              placeholder="Paste the Functional Specification Document (FSD), feature list, modules, or full project details here. The AI Price Estimator reads this to determine project complexity and valuation..."
+              placeholder="Paste the Functional Specification Document (FSD) or detailed specifications of the website here (e.g., project overview, features, user roles, database tables, pages). Groq AI bases the website creation price directly on this specification..."
               className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y font-mono text-xs leading-relaxed"
             />
+            {errors.fsd_details && (
+              <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+                {errors.fsd_details}
+              </p>
+            )}
           </div>
 
           {/* Website Price & AI Price Auto-Detector Section */}
